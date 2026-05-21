@@ -19,7 +19,7 @@
             (list label lenMatch subStr)
         )
 
-        (list "none" "0" "")
+        (list "none" 0 "")
     )
 )
 
@@ -40,7 +40,7 @@
 (define allRegex
       '(  ("rw-automata" #rx"^Automata")
           ("rw-start" #rx"^start")
-          ("rw-end" #rx"^q[0-9]+")
+          ("rw-end" #rx"^end")
           ("rw-states" #rx"^states")
           ("rw-transitions" #rx"^transitions")
           ("rw-alphabet" #rx"^alphabet")
@@ -50,10 +50,10 @@
           ("lower-line" #rx"^_")
           ("stateId" #rx"^q[0-9]+"  )
           ("dots"    #rx"^:")
-          ("double-dots" #rx"^::")
+          ("transition-sybol" #rx"^::")
+          ("alphabet-symbol" #rx"^[a-zA-Z0-9] ")
           ("coma"    #rx"^,")
           ("semicol" #rx"^;")
-          ("kw-states" #rx"^states")
           ("identifier" #rx"^([A-Z]|[a-z])+")
        )
 )
