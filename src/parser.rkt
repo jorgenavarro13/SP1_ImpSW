@@ -1,8 +1,8 @@
+#lang racket
+; Parser: converts a flat token list into an automaton data structure
 
-; Generate token list
-(define (flatten-token token-stream)
-  (apply append token-stream)
-)
+(provide parse-transitions
+         parse-tokens)
 
 (define (parse-transitions flat-tokens)
   ; First, isolate only the tokens inside transitions: [...]
@@ -38,7 +38,9 @@
 )
 
 ; Parse
-(define (parse-tokens tokens)
+(define (parse-tokens raw-tokens)
+  ; Strip whitespace tokens produced by the new Tokenizer
+  (define tokens (filter (lambda (t) (not (equal? (first t) "blank_space"))) raw-tokens))
   ; Get all label values
   (define (get-all label)
     (remove-duplicates (map second (filter (lambda (t) (equal? (first t) label)) tokens)))
@@ -49,7 +51,7 @@
       (if (empty? result)
           #f ; Return false if not found
           (first result))))
-  
+
   ; Find the stateId that comes after a specific keyword
   (define (get-state-after keyword)
       (let ([token-list (dropf tokens (lambda (t) (not (equal? (first t) keyword))))])
@@ -67,29 +69,3 @@
     (cons 'transitions (parse-transitions tokens))
   )
 )
-
-(define (simulate automaton input)
-  (define (simulate-aux current-state input)
-    (cond
-      [(empty? input) (member current-state (list (cdr (assoc 'end automaton))))]
-      [else
-        (let* ([symbol (car input)]
-               [transition (findf 
-                 (lambda (t) (and (equal? (first t) current-state)
-                                  (equal? (second t) (string symbol))))
-                 (cdr (assoc 'transitions automaton)))])
-          (if transition
-              (simulate-aux (third transition) (cdr input))
-              #f))]))
-  (simulate-aux (cdr (assoc 'start automaton)) (string->list input)))
-
-
-
-
-; Example usage
-(define input "Automata\nstart q0\nstates [q0, q1, q2]\ntransitions [q0:0::q1, q1:1::q2, q2:1::q2]\nalphabet [0, 1]\nend q2")
-(define token-stream (Tokenizer input))
-(define flat-tokens (flatten-token token-stream))
-(define automaton (parse-tokens flat-tokens))
-(displayln automaton)
-(displayln (simulate automaton "0111"))

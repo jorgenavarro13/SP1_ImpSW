@@ -1,14 +1,17 @@
 #lang racket
 (require srfi/13)
 
-; Read files
-(define file "input.txt")
-(define in (open-input-file file))
-(define readed-data (sequence->list (in-lines in)) )
-(close-input-port in)
+; IO utilities: file reading and system file opening
 
-(displayln "\nFile content")
-(displayln readed-data)
+(provide sys-show-file
+         read-file-lines)
+
+; Read lines from a file and return them as a list of strings
+(define (read-file-lines path)
+  (define in (open-input-file path))
+  (define readed-data (sequence->list (in-lines in)))
+  (close-input-port in)
+  readed-data)
 
 (define (sys-show-file path)
   (cond
@@ -20,5 +23,3 @@
      (system (format "xdg-open \"~a\"" path))  ]
    )
 )
-
-(sys-show-file "paginaUNO.html")

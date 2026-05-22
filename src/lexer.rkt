@@ -1,9 +1,19 @@
 #lang racket
-(define reMatch regexp-match-positions)
 ; SP1 Implementation of computational methods
 
+(provide reMatch
+         getMatch
+         getMax
+         allRegex
+         flush-line
+         Tokenizer
+         print-token-stream
+         flatten-token)
+
+(define reMatch regexp-match-positions)
+
 ; (label, len-match, substr) GetMatch ((label regex))----------------
-; This function returns a pair list of the match string 
+; This function returns a pair list of the match string
 ; based on the input and a regex pattern
 (define (getMatch label-regex str)
     (define label (first label-regex))
@@ -59,11 +69,6 @@
        )
 )
 
-; ---------------TOKENIZER---------------------------------
-; This function iterates trough the input, generation a token stream based on the
-; longest match for each substring extracted, and as a result we obtain a token stream with 
-; the longest coincidences of strings and their respective label asociated
-
 ; consume characters until newline or eof
 (define (flush-line remaining current-line)
   (cond
@@ -80,6 +85,10 @@
         current-line
         (string (string-ref remaining 0))))]))
 
+; ---------------TOKENIZER---------------------------------
+; This function iterates trough the input, generation a token stream based on the
+; longest match for each substring extracted, and as a result we obtain a token stream with
+; the longest coincidences of strings and their respective label asociated
 
 (define (Tokenizer input)
 
@@ -150,16 +159,6 @@
 
   (tokenizer input "" '() '()))
 
-(define input "
-Automata [
-states: ----[q0,q1,q2,q3]
-alphabet: [abcd123456789]
-start: q0
-end: q3
-transitions: [q0::0::q1, q0::1::q2, q1::1::q3, q2::0::q3]
-]
-")
-
 (define (print-token-stream token-stream)
 
   (define (print-aux stream)
@@ -173,10 +172,7 @@ transitions: [q0::0::q1, q0::1::q2, q1::1::q3, q2::0::q3]
 
   (print-aux token-stream))
 
-
-
-(define result (Tokenizer input))
-(define tokens (first result))
-(define error-line (second result))
-(print-token-stream tokens)
-(displayln error-line)
+; Generate token list
+(define (flatten-token token-stream)
+  (apply append token-stream)
+)
