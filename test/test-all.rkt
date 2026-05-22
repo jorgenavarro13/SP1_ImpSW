@@ -4,19 +4,26 @@
          "../src/parser.rkt"
          "../src/simulator.rkt")
 
-; Shared fixture
+; Shared fixture — Tokenizer now returns (list flat-tokens error-or-false)
 (define input "Automata\nstart q0\nstates [q0, q1, q2]\ntransitions [q0:0::q1, q1:1::q2, q2:1::q2]\nalphabet [0, 1]\nend q2")
-(define token-stream (Tokenizer input))
-(define flat-tokens  (flatten-token token-stream))
-(define automaton    (parse-tokens flat-tokens))
+(define result     (Tokenizer input))
+(define flat-tokens (first result))
+(define error-line  (second result))
+(define automaton   (parse-tokens flat-tokens))
 
 ; Lexer tests
-(test-case "Tokenizer produces non-empty output"
-  (check-false (empty? token-stream)))
+(test-case "Tokenizer returns a list of two elements"
+  (check-equal? (length result) 2))
 
-(test-case "flatten-token returns a flat list"
-  (check-true (list? flat-tokens))
+(test-case "Tokenizer: no error on valid input"
+  (check-false error-line))
+
+(test-case "Tokenizer: flat-tokens is non-empty"
   (check-true (> (length flat-tokens) 0)))
+
+(test-case "Tokenizer: error on invalid input"
+  (define bad-result (Tokenizer "Automata\n!!!bad line\nend q0"))
+  (check-not-false (second bad-result)))
 
 ; Parser tests
 (test-case "parse-tokens: start state"

@@ -5,6 +5,7 @@
          getMatch
          getMax
          allRegex
+         flush-line
          Tokenizer
          print-token-stream
          flatten-token)
@@ -64,75 +65,112 @@
           ("coma"    #rx"^,")
           ("semicol" #rx"^;")
           ("identifier" #rx"^([A-Z]|[a-z])+")
+          ("blank_space" #rx"^[ ]+")
        )
 )
+
+; consume characters until newline or eof
+(define (flush-line remaining current-line)
+  (cond
+    [(= (string-length remaining) 0)
+      current-line]
+
+    [(char=? (string-ref remaining 0) #\newline)
+      current-line]
+
+    [else
+      (flush-line
+      (substring remaining 1)
+      (string-append
+        current-line
+        (string (string-ref remaining 0))))]))
 
 ; ---------------TOKENIZER---------------------------------
 ; This function iterates trough the input, generation a token stream based on the
 ; longest match for each substring extracted, and as a result we obtain a token stream with
 ; the longest coincidences of strings and their respective label asociated
 
-(define (Tokenizer input) ; Auxiliar function for tokenizer
-  (define (tokenizer input token-stream current-line) ; To generate a list of lists two simultaneous lists are being used
+(define (Tokenizer input)
+
+  (define (flush-line remaining current-line)
+
     (cond
-      ; BASE CASE
-      [(= (string-length input) 0) (append token-stream (list current-line))]
-      ; Skip blank spaces
-      [(equal? (substring input 0 1) " ")
-      (tokenizer (substring input 1) token-stream current-line)]
+      [(= (string-length remaining) 0)
+       current-line]
+
+      [(char=? (string-ref remaining 0) #\newline)
+       current-line]
 
       [else
-      (let* (
-              [all-matches (map (lambda (r) (getMatch r input)) allRegex)]
-              [mayor (getMax all-matches)]
-              [label  (first mayor)]
-              [len    (second mayor)]
-              [lexem (third mayor)]
-            )
-        ( cond
-            ; No match: Skip a character
-            [(equal? label "none") (tokenizer (substring input 1) token-stream current-line)] ; Avoid infinite loop
-            ; Skip to the next line
-            [(equal? label "newline")(tokenizer(substring input len)  ; Add it to the list of lists
-                                                (append token-stream (list current-line))
-                                                '()
-                                      )
-            ]
-            ; Match : Consume and add token
-            [else (tokenizer (substring input len)
-                            token-stream
-                            (append current-line (list (list label lexem)))) ; Add it to the current line list
-            ]
-          )
-      )]
-    )
-  )
-  (tokenizer input '() '())
-)
+       (flush-line
+        (substring remaining 1)
+        (string-append
+         current-line
+         (string (string-ref remaining 0))))]))
 
-; Auxiliary function to print the token stream
+  (define (tokenizer input current-line current-line-tokens token-stream)
+
+    (cond
+      [(= (string-length input) 0)
+       (list
+        (append token-stream current-line-tokens)
+        #f)]
+
+      [else
+
+       (let* (
+               [all-matches (map (lambda (r) (getMatch r input)) allRegex)]
+               [mayor (getMax all-matches)]
+               [label (first mayor)]
+               [len (second mayor)]
+               [lexem (third mayor)]
+             )
+
+         (cond
+
+           ; ERROR
+           [(equal? label "none")
+
+            ; discard current-line-tokens
+            (list
+             token-stream
+             (flush-line input current-line))]
+
+           ; NEWLINE
+           [(equal? label "newline")
+
+            (tokenizer
+             (substring input len)
+             ""
+             '()
+             (append token-stream
+                     current-line-tokens
+                     (list (list label lexem))))]
+
+           ; NORMAL TOKEN
+           [else
+
+            (tokenizer
+             (substring input len)
+             (string-append current-line lexem)
+             (append current-line-tokens
+                     (list (list label lexem)))
+             token-stream)]))]))
+
+  (tokenizer input "" '() '()))
+
 (define (print-token-stream token-stream)
 
-  (define (print-token-stream-aux token-stream counter) ; Funcion auxiliar para no tener que pasar todos los parametros en la llamada a la funcion
-    (cond
-      [(empty? token-stream)]
-      [else
-        (let* (
-                [currentline  (car token-stream)]
-                [tokens (map second currentline )]
-                [restoflines (cdr token-stream)]
-              )
-      (display "\nLinea ")(display counter)(display ":")
-      (map (lambda (r) (display r)) tokens) (displayln "")
-      (map (lambda (pair) (displayln pair )) currentline)
-      (print-token-stream-aux restoflines (+ 1 counter))
-        )
-      ]
-    )
-  )
+  (define (print-aux stream)
 
-  (print-token-stream-aux token-stream 1)
-)
+    (cond
+      [(empty? stream) (void)]
+
+      [else
+       (displayln (car stream))
+       (print-aux (cdr stream))]))
+
+  (print-aux token-stream))
 
 ; Generate token list
 (define (flatten-token token-stream)
