@@ -48,7 +48,7 @@
 
 ; Regular expresions of the automaton
 (define allRegex
-      '(  ("rw-automata" #rx"^Automata")
+      '(  ("rw-automata" #rx"Automaton")
           ("rw-start" #rx"^start")
           ("rw-end" #rx"^end")
           ("rw-states" #rx"^states")
@@ -61,10 +61,10 @@
           ("stateId" #rx"^q[0-9]+"  )
           ("dots"    #rx"^:")
           ("transition-sybol" #rx"^::")
+          ("identifier" #rx"^[a-zA-Z_][a-zA-Z0-9_]*")
           ("alphabet-symbol" #rx"^[a-zA-Z0-9]")
           ("coma"    #rx"^,")
           ("semicol" #rx"^;")
-          ("identifier" #rx"^([A-Z]|[a-z])+")
           ("blank_space" #rx"^[ ]+")
        )
 )

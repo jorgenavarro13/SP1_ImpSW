@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Racket App</title>
+
+    <!-- CSS styles -->
+    <style>
+
+		#output {
+			background: #ffffff;
+			color: #f8f8f2;
+			font-family: monospace;
+			font-size: 15px;
+			padding: 20px;
+			border-radius: 6px;
+		}
+
+		#output span { font-weight: bold; }
+
+		.keyword    { color: #f92672; font-style: italic; }
+		.state-id   { color: #a6e22e; }
+		.symbol-id  { color: #e6db74; }
+		.dos-puntos { color: #ae81ff; }
+		.coma       { color: #000000; }
+		.punto-coma { color: #ae81ff; }
+		.flecha     { color: #66d9ef; }
+		.parentesis { color: #fd971f; }
+		.comment    { color: #75715e; font-style: italic; }
+		.identifier { color: #3659c4; }
+		.unknown    { color: #000000; }
+	</style>
+
+</head>
+
+<body>
+
+    <h1>Racket Hello App</h1>
+
+    <!-- input textbox -->
+    <textarea id="textbox" rows="10"  cols="50"></textarea>
+    <br><br>
+
+    <!-- button that calls the run function -->
+    <button onclick="run()"> Run </button>
+    <br><br>
+
+    <!-- output goes in this div -->
+    <div id="output"></div>
+
+    <script>
+		async function run() {
+
+			/* Use getElementById to extract the value from the textbox */
+		    const text =  document.getElementById("textbox").value;
+
+		    /* Build the request */
+		    const response = await fetch("/", {
+		        method: "POST",
+
+		        headers: { "Content-Type": "application/json" },
+
+		        body: JSON.stringify({
+		            /* Build the JSON body with the input text */
+                      input: text
+		        })
+		    });
+
+		    const data = await response.json();
+
+		    /* Extract response data: result text and base64-encoded image
+		       Use getElementById to assign HTML content to the output div */
+		    document.getElementById("output").innerHTML =  data.result
+			+ "<br><br>"
+			+ "<img src='data:image/png;base64,"
+			+ data.image + "' />";
+		}
+    </script>
+
+</body>
+</html>
