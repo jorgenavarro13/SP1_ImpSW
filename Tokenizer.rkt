@@ -55,6 +55,7 @@
           ("coma"    #rx"^,")
           ("semicol" #rx"^;")
           ("identifier" #rx"^([A-Z]|[a-z])+")
+          ("blank_space" #rx"^[ ]+")
        )
 )
 
@@ -63,159 +64,119 @@
 ; longest match for each substring extracted, and as a result we obtain a token stream with 
 ; the longest coincidences of strings and their respective label asociated
 
-(define (Tokenizer input) ; Auxiliar function for tokenizer
-  (define (tokenizer input token-stream current-line) ; To generate a list of lists two simultaneous lists are being used
-    (cond                                                                           
-      ; BASE CASE
-      [(= (string-length input) 0) (append token-stream (list current-line))]
-      ; Skip blank spaces
-      [(equal? (substring input 0 1) " ")
-      (tokenizer (substring input 1) token-stream current-line)]
-      
+; consume characters until newline or eof
+(define (flush-line remaining current-line)
+  (cond
+    [(= (string-length remaining) 0)
+      current-line]
+
+    [(char=? (string-ref remaining 0) #\newline)
+      current-line]
+
+    [else
+      (flush-line
+      (substring remaining 1)
+      (string-append
+        current-line
+        (string (string-ref remaining 0))))]))
+
+
+(define (Tokenizer input)
+
+  (define (flush-line remaining current-line)
+
+    (cond
+      [(= (string-length remaining) 0)
+       current-line]
+
+      [(char=? (string-ref remaining 0) #\newline)
+       current-line]
+
       [else
-      (let* (
-              [all-matches (map (lambda (r) (getMatch r input)) allRegex)]
-              [mayor (getMax all-matches)]
-              [label  (first mayor)]
-              [len    (second mayor)]
-              [lexem (third mayor)]
-            )
-        ( cond
-            ; No match: Skip a character
-            [(equal? label "none") (tokenizer (substring input 1) token-stream current-line)] ; Avoid infinite loop
-            ; Skip to the next line
-            [(equal? label "newline")(tokenizer(substring input len)  ; Add it to the list of lists 
-                                                (append token-stream (list current-line))
-                                                '()
-                                      )
-            ]
-            ; Match : Consume and add token
-            [else (tokenizer (substring input len)
-                            token-stream 
-                            (append current-line (list (list label lexem)))) ; Add it to the current line list
-            ]
-          )
-      )]
-    )
-  )
-  (tokenizer input '() '())
-)
+       (flush-line
+        (substring remaining 1)
+        (string-append
+         current-line
+         (string (string-ref remaining 0))))]))
 
-; Auxiliary function to print the token stream
-(define (print-token-stream token-stream) 
-  
-  (define (print-token-stream-aux token-stream counter) ; Funcion auxiliar para no tener que pasar todos los parametros en la llamada a la funcion
+  (define (tokenizer input current-line current-line-tokens token-stream)
+
     (cond
-      [(empty? token-stream)]
-      [else 
-        (let* (
-                [currentline  (car token-stream)]
-                [tokens (map second currentline )]
-                [restoflines (cdr token-stream)]
-              )
-      (display "\nLinea ")(display counter)(display ":") 
-      (map (lambda (r) (display r)) tokens) (displayln "")
-      (map (lambda (pair) (displayln pair )) currentline)    
-      (print-token-stream-aux restoflines (+ 1 counter))
-        )
-      ]
-    )
-  )
- 
-  (print-token-stream-aux token-stream 1)
-)
+      [(= (string-length input) 0)
+       (list
+        (append token-stream current-line-tokens)
+        #f)]
 
-; Generate token list
-(define (flatten-token token-stream)
-  (apply append token-stream)
-)
-
-(define (parse-transitions flat-tokens)
-  ; First, isolate only the tokens inside transitions: [...]
-  ; Walk the list looking for groups of: stateId : symbol :: stateId
-
-  (define (parse-transitions-aux tokens acc)
-    (cond
-      ; BASE CASE: less than 5 tokens left, nothing more to parse
-      [(< (length tokens) 5) acc]
-
-      ; MATCH: found a transition pattern q0:0::q1
-      [(and (equal? (first (first tokens))  "stateId")           ; from-state
-            (equal? (first (second tokens)) "dots")               ; :
-            (equal? (first (third tokens))  "alphabet-symbol")    ; symbol
-            (equal? (first (fourth tokens)) "transition-sybol")  ; :: typo in original label
-            (equal? (first (fifth tokens))  "stateId"))           ; to-state
-
-       (let* ([from   (second (first tokens))]
-              [symbol (second (third tokens))]
-              [to     (second (fifth tokens))]
-              [new-transition (list from symbol to)])
-         ; Consume 5 tokens, add transition, recurse
-         (parse-transitions-aux (list-tail tokens 5)
-                                (append acc (list new-transition))))
-      ]
-
-      ; NO MATCH: skip one token and keep looking
-      [else (parse-transitions-aux (cdr tokens) acc)]
-    )
-  )
-
-  (parse-transitions-aux flat-tokens '())
-)
-
-; Parse
-(define (parse-tokens tokens)
-  ; Get all label values
-  (define (get-all label)
-    (remove-duplicates (map second (filter (lambda (t) (equal? (first t) label)) tokens)))
-  )
-  ; Get label value
-  (define (get-first label)
-    (let ([result (get-all label)])
-      (if (empty? result)
-          #f ; Return false if not found
-          (first result))))
-  
-  ; Find the stateId that comes after a specific keyword
-  (define (get-state-after keyword)
-      (let ([token-list (dropf tokens (lambda (t) (not (equal? (first t) keyword))))])
-        (if (and (pair? token-list) (pair? (cdr token-list)) (equal? (first (second token-list)) "stateId"))
-            (second (second token-list))
-            #f)))
-
-  ; Build Automaton
-  (list
-    (cons 'name        (get-first "identifier"))
-    (cons 'states      (get-all "stateId"))
-    (cons 'start       (get-state-after "rw-start"))
-    (cons 'end         (get-state-after "rw-end"))
-    (cons 'alphabet    (get-all "alphabet-symbol"))
-    (cons 'transitions (parse-transitions tokens))
-  )
-)
-
-(define (simulate automaton input)
-  (define (simulate-aux current-state input)
-    (cond
-      [(empty? input) (member current-state (list (cdr (assoc 'end automaton))))]
       [else
-        (let* ([symbol (car input)]
-               [transition (findf 
-                 (lambda (t) (and (equal? (first t) current-state)
-                                  (equal? (second t) (string symbol))))
-                 (cdr (assoc 'transitions automaton)))])
-          (if transition
-              (simulate-aux (third transition) (cdr input))
-              #f))]))
-  (simulate-aux (cdr (assoc 'start automaton)) (string->list input)))
+
+       (let* (
+               [all-matches (map (lambda (r) (getMatch r input)) allRegex)]
+               [mayor (getMax all-matches)]
+               [label (first mayor)]
+               [len (second mayor)]
+               [lexem (third mayor)]
+             )
+
+         (cond
+
+           ; ERROR
+           [(equal? label "none")
+
+            ; discard current-line-tokens
+            (list
+             token-stream
+             (flush-line input current-line))]
+
+           ; NEWLINE
+           [(equal? label "newline")
+
+            (tokenizer
+             (substring input len)
+             ""
+             '()
+             (append token-stream
+                     current-line-tokens
+                     (list (list label lexem))))]
+
+           ; NORMAL TOKEN
+           [else
+
+            (tokenizer
+             (substring input len)
+             (string-append current-line lexem)
+             (append current-line-tokens
+                     (list (list label lexem)))
+             token-stream)]))]))
+
+  (tokenizer input "" '() '()))
+
+(define input "
+Automata [
+states: ----[q0,q1,q2,q3]
+alphabet: [abcd123456789]
+start: q0
+end: q3
+transitions: [q0::0::q1, q0::1::q2, q1::1::q3, q2::0::q3]
+]
+")
+
+(define (print-token-stream token-stream)
+
+  (define (print-aux stream)
+
+    (cond
+      [(empty? stream) (void)]
+
+      [else
+       (displayln (car stream))
+       (print-aux (cdr stream))]))
+
+  (print-aux token-stream))
 
 
 
-
-; Example usage
-(define input "Automata\nstart q0\nstates [q0, q1, q2]\ntransitions [q0:0::q1, q1:1::q2, q2:1::q2]\nalphabet [0, 1]\nend q2")
-(define token-stream (Tokenizer input))
-(define flat-tokens (flatten-token token-stream))
-(define automaton (parse-tokens flat-tokens))
-(displayln automaton)
-(displayln (simulate automaton "0111"))
+(define result (Tokenizer input))
+(define tokens (first result))
+(define error-line (second result))
+(print-token-stream tokens)
+(displayln error-line)
