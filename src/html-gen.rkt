@@ -1,14 +1,9 @@
 #lang racket
 
 (provide tokenize-to-html)
-
 (require "lexer.rkt")
 
-; =====================================================
-; GENERACION DE HTML
-; =====================================================
-
-; Escapa caracteres especiales de HTML en un string
+; Escapes special HTML characters in a string
 (define (html-encode str)
   (string-replace
    (string-replace
@@ -16,45 +11,40 @@
     "<" "&lt;")
    ">" "&gt;"))
 
-; Mapea etiqueta de token a clase CSS
+; Maps a token label to a CSS class
 (define (label->class label)
-  (cond
-    [(member label '("rw-automata" "rw-start" "rw-end"
-                     "rw-states" "rw-transitions" "rw-alphabet")) "keyword"]
-    [(equal? label "stateId")              "state-id"]
-    [(equal? label "alphabet-symbol")      "symbol-id"]
-    [(equal? label "dots")                 "dos-puntos"]
-    [(equal? label "transition-sybol")     "flecha"]
-    [(equal? label "coma")                 "coma"]
-    [(equal? label "semicol")              "punto-coma"]
-    [(member label '("right-straigth-parenthesis"
-                     "left-straigth-parenthesis")) "parentesis"]
-    [(equal? label "blank_space")          "blank"]
-    [(equal? label "identifier")           "identifier"]
-    [else                                  "unknown"]))
+  (case label
+    [(kw_states kw_start kw_accepting kw_alphabet kw_transitions) "keyword"]
+    [(state_id)            "state-id"]
+    [(symbol_id)           "symbol-id"]
+    [(dos_puntos)          "dos-puntos"]
+    [(coma)                "coma"]
+    [(punto_coma)          "punto-coma"]
+    [(flecha)              "flecha"]
+    [(par_abre par_cierra) "parentesis"]
+    [(comment)             "comment"]
+    [else                  "unknown"]))
 
-; Genera el elemento <span> HTML para un token
+; Generates the HTML <span> element for a token
 (define (token->span tok)
-  (string-append "<span class=\"" (label->class (first tok)) "\">"
-                 (html-encode (second tok))
+  (string-append "<span class=\"" (label->class (car tok)) "\">"
+                 (html-encode (cdr tok))
                  "</span>"))
 
-; Genera el HTML de una linea tokenizada (snippet para insertar inline)
+; Generates the HTML snippet for a tokenized line (for inline insertion)
 (define (line->html-snippet line-pair)
   (let ([tokens (cdr line-pair)])
     (if (null? tokens)
         ""
         (string-append (apply string-append (map token->span tokens)) "<br>\n"))))
 
-; ---- Para el servlet: devuelve snippet HTML de un string de entrada ----
+; ---- For the servlet: returns an HTML snippet from an input string ----
 (define (tokenize-to-html input-str)
-  (let* (
-         [tokenized (Tokenizer input-str)]
-         [tokenized (first tokenized)]  ; obtenemos solo la parte de tokens, descartando error-line
-         )
-    (apply string-append (map token->span tokenized))))
+  (let* ([lines     (string-split input-str "\n")]
+         [tokenized (flatten-token lines)])
+    (apply string-append (map line->html-snippet tokenized))))
 
-; ---- Para standalone: genera documento HTML completo ----
+; ---- For standalone use: generates a full HTML document ----
 (define html-styles
   (string-append
    "<style>\n"
@@ -78,5 +68,3 @@
    "</head>\n<body>\n<pre>\n"
    (apply string-append (map line->html-snippet tokenized-lines))
    "</pre>\n</body>\n</html>"))
-
-

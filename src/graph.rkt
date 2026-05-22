@@ -1,21 +1,20 @@
 #lang racket
 
-(provide genera-img)          ; hace que esta función esté disponible para otros módulos
-(require racket/system)       ; para el comando en terminal
-(require racket/runtime-path) ; para manejo de rutas
-(require net/base64)          ; para encoding de imagen
+(provide genera-img)          ; export this function for use in other modules
+(require racket/system)       ; for shell commands
+(require racket/runtime-path) ; for path handling
+(require net/base64)          ; for image encoding
 
-; establece la ruta actual con define-runtime-path  y current-directory
-; luego imprimela
+; set the working directory to this file's location and print it
 (define-runtime-path here ".")
 (current-directory here)
 (displayln (format "DIR: ~a" (current-directory)))
 
-; devuleve el contenido del .dot
-; notas: \"  para comillas dentro del string
-; automata-rep es dummy... por ahora 
+; returns the .dot file content
+; note: \" for quotes inside the string
+; automata-rep is a placeholder for now
 (define (genera-dot automata-rep)
-    (define dot-text  
+    (define dot-text
       "digraph DFA {
         rankdir=LR;
 
@@ -28,29 +27,25 @@
         q1 [shape=doublecircle];
         q2 [shape=doublecircle];   }"
     )
-    dot-text  
+    dot-text
 )
 
 
 (define  (genera-img  automata-rep )
-  ; contenido para el .dot: llamando a a genera-dot
+  ; get .dot content by calling genera-dot
   (define dot-text (genera-dot automata-rep))
 
-  ; asegurar que ocurra en el directorio establecido... 
+  ; ensure execution happens in the established directory
   (parameterize ([current-directory here])
-      ; guardar archivo .dot, remplazando si ya existe
+      ; save the .dot file, replacing if it already exists
       (call-with-output-file "dfa.dot" #:exists 'replace
                              (lambda (out) (display dot-text out)))
 
-     ; llamada a graphviz con el comando para generar la imagen
+      ; call graphviz to generate the image
       (system "dot -Tpng dfa.dot -o dfa.png")
       (displayln "dfa.png generated")
-    
-     ; regresa imagen codificada
-     (bytes->string/latin-1 (base64-encode (file->bytes "dfa.png") #""))
+
+      ; return the base64-encoded image
+      (bytes->string/latin-1 (base64-encode (file->bytes "dfa.png") #""))
   )
 )
-
-; hace que la funcion genera-img este disponible desde fuera, con provide
-(provide genera-img)
-

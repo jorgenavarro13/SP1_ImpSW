@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <title>Racket App</title>
 
-     <!-- estilos en css -->
+    <!-- CSS styles -->
     <style>
 
 		#output {
@@ -38,42 +38,42 @@
 
     <h1>Racket Hello App</h1>
 
-    <!-- el textbox -->
+    <!-- input textbox -->
     <textarea id="textbox" rows="10"  cols="50"></textarea>
     <br><br>
 
-    <!-- el boton, llama a la funcion run -->
+    <!-- button that calls the run function -->
     <button onclick="run()"> Run </button>
     <br><br>
 
-    <!-- salida va en este div llamado output -->
+    <!-- output goes in this div -->
     <div id="output"></div>
 
     <script>
 		async function run() {
 
-			/* Usa la funcion getElementById de document para extrater el value del textbox */
+			/* Use getElementById to extract the value from the textbox */
 		    const text =  document.getElementById("textbox").value;
 
-		    /* Construye la peticion */ 
+		    /* Build the request */
 		    const response = await fetch("/", {
-		        method: "POST", /* cual metodo deberias usar?  */
+		        method: "POST",
 
 		        headers: { "Content-Type": "application/json" },
 
 		        body: JSON.stringify({
-		            /*Forma el json, para enviar el text ingresado */
+		            /* Build the JSON body with the input text */
                       input: text
- 		        })
+		        })
 		    });
 
 		    const data = await response.json();
 
-		    /* Extrae los datos de la respuesta: texto resultado e imagen codificada 
-		       Usa getElementById asignar contenido en html al div output  */
-		    document.getElementById("output").innerHTML =  data.result 
-			+ "<br><br>" 
-			+ "<img src='data:image/png;base64," 
+		    /* Extract response data: result text and base64-encoded image
+		       Use getElementById to assign HTML content to the output div */
+		    document.getElementById("output").innerHTML =  data.result
+			+ "<br><br>"
+			+ "<img src='data:image/png;base64,"
 			+ data.image + "' />";
 		}
     </script>

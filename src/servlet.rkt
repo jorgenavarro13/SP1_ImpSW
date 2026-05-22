@@ -6,31 +6,32 @@
 (require "graph.rkt")
 (require "html-gen.rkt")
 
-; Main servlet function: manage requests, extract data, and produce responses
+; Main servlet function: handles requests, extracts data, and produces responses
 (define (start request)
   (define method (request-method request))  ; extract the HTTP method (GET, POST)
- 
+
   (cond
     [(equal? method #"POST")
 
-       (define data  (bytes->jsexpr  (request-post-data/raw request) ))  ; extract json
-       (define input-str (hash-ref data 'input))                 ; get the input field
+       (define data  (bytes->jsexpr  (request-post-data/raw request) ))  ; extract JSON body
+       (define input-str (hash-ref data 'input))                          ; get the input field
 
-       ; build a hash map with the results: 'result' is the colored HTML, 'image' is the generated image
+       ; build a hash map with the results:
+       ; 'result' is the colored HTML, 'image' is the generated image
        (define json-hash
               (hash 'result (tokenize-to-html input-str)
                     'image    (genera-img input-str))
               )
-       
-       ; response/output envia la respuesta, escribe el hashmap hacia el json
+
+       ; send the response, writing the hash map as JSON
        (response/output  #:code 200   #:mime-type #"application/json"
                      (lambda (out) (write-json json-hash out ) ) )
     ]
 
-    ; si no es POST, asume es GET, y abre la pagina inical
+    ; if not POST, assume GET and serve the initial page
     [else
-         ; response/output pasa el puerto out a una funcion lambda,
-         ; que 'imprime' lo que se mostrara
+         ; response/output passes the output port to a lambda
+         ; that writes what will be displayed
          (response/output  #:code 200   #:mime-type #"text/html"
                        (lambda (out) (display (file->string "index.html") out))  )
     ]
