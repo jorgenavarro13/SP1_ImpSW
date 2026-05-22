@@ -1,8 +1,10 @@
 #lang racket
 (provide start)
 
-(require "src/graph.rkt")
-(require "src/html-gen.rkt")
+(require web-server/servlet)
+(require json)
+(require "graph.rkt")
+(require "html-gen.rkt")
 
 ; Main servlet function: manage requests, extract data, and produce responses
 (define (start request)

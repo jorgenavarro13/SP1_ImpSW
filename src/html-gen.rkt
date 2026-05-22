@@ -1,8 +1,8 @@
 #lang racket
 
-(provide tokenize-to-html tokenize-string tokenize-lines)
+(provide tokenize-to-html)
 
-(require "src/lexer.rkt")
+(require "lexer.rkt")
 
 ; =====================================================
 ; GENERACION DE HTML
@@ -18,22 +18,25 @@
 
 ; Mapea etiqueta de token a clase CSS
 (define (label->class label)
-  (case label
-    [(kw_states kw_start kw_accepting kw_alphabet kw_transitions) "keyword"]
-    [(state_id)            "state-id"]
-    [(symbol_id)           "symbol-id"]
-    [(dos_puntos)          "dos-puntos"]
-    [(coma)                "coma"]
-    [(punto_coma)          "punto-coma"]
-    [(flecha)              "flecha"]
-    [(par_abre par_cierra) "parentesis"]
-    [(comment)             "comment"]
-    [else                  "unknown"]))
+  (cond
+    [(member label '("rw-automata" "rw-start" "rw-end"
+                     "rw-states" "rw-transitions" "rw-alphabet")) "keyword"]
+    [(equal? label "stateId")              "state-id"]
+    [(equal? label "alphabet-symbol")      "symbol-id"]
+    [(equal? label "dots")                 "dos-puntos"]
+    [(equal? label "transition-sybol")     "flecha"]
+    [(equal? label "coma")                 "coma"]
+    [(equal? label "semicol")              "punto-coma"]
+    [(member label '("right-straigth-parenthesis"
+                     "left-straigth-parenthesis")) "parentesis"]
+    [(equal? label "blank_space")          "blank"]
+    [(equal? label "identifier")           "identifier"]
+    [else                                  "unknown"]))
 
 ; Genera el elemento <span> HTML para un token
 (define (token->span tok)
-  (string-append "<span class=\"" (label->class (car tok)) "\">"
-                 (html-encode (cdr tok))
+  (string-append "<span class=\"" (label->class (first tok)) "\">"
+                 (html-encode (second tok))
                  "</span>"))
 
 ; Genera el HTML de una linea tokenizada (snippet para insertar inline)
@@ -45,9 +48,11 @@
 
 ; ---- Para el servlet: devuelve snippet HTML de un string de entrada ----
 (define (tokenize-to-html input-str)
-  (let* ([lines     (string-split input-str "\n")]
-         [tokenized (flatten-token lines)])
-    (apply string-append (map line->html-snippet tokenized))))
+  (let* (
+         [tokenized (Tokenizer input-str)]
+         [tokenized (first tokenized)]  ; obtenemos solo la parte de tokens, descartando error-line
+         )
+    (apply string-append (map token->span tokenized))))
 
 ; ---- Para standalone: genera documento HTML completo ----
 (define html-styles
