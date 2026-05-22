@@ -45,10 +45,13 @@
 
 ; For servlet: return an HTML snippet for an input string
 (define (tokenize-to-html input-str)
-  (let* ([tokenized (Tokenizer input-str)]
-         [tokenized (first tokenized)]  ; take only the tokens part, discarding error-line
-         )
-    (apply string-append (map token->span tokenized))))
+  (let* ([tokens (first (Tokenizer input-str))])
+    (apply string-append
+           (map (lambda (tok)
+                  (if (equal? (first tok) "newline")
+                      "<br>\n"
+                      (token->span tok)))
+                tokens))))
 
 ; ---- For standalone: generate a complete HTML document ----
 (define html-styles
