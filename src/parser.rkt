@@ -38,7 +38,9 @@
 )
 
 ; Parse
-(define (parse-tokens tokens)
+(define (parse-tokens raw-tokens)
+  ; Strip whitespace tokens produced by the new Tokenizer
+  (define tokens (filter (lambda (t) (not (equal? (first t) "blank_space"))) raw-tokens))
   ; Get all label values
   (define (get-all label)
     (remove-duplicates (map second (filter (lambda (t) (equal? (first t) label)) tokens)))
