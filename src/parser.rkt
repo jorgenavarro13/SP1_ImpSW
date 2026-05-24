@@ -1,5 +1,5 @@
 #lang racket
-; Parser: converts a flat token list into an automaton data structure
+; Parser: converts a flat token-stream into an automaton data structure
 
 (provide parse-transitions
          parse-tokens)
@@ -13,9 +13,9 @@
       ; BASE CASE: less than 5 tokens left, nothing more to parse
       [(< (length tokens) 5) acc]
 
-      ; MATCH: found a transition pattern q0:0::q1
+      ; MATCH: found a transition pattern q0::0::q1
       [(and (equal? (first (first tokens))  "stateId")           ; from-state
-            (equal? (first (second tokens)) "dots")               ; :
+            (equal? (first (second tokens)) "transition-sybol")               ; ::
             (equal? (first (third tokens))  "alphabet-symbol")    ; symbol
             (equal? (first (fourth tokens)) "transition-sybol")  ; :: typo in original label
             (equal? (first (fifth tokens))  "stateId"))           ; to-state

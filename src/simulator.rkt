@@ -16,4 +16,5 @@
           (if transition
               (simulate-aux (third transition) (cdr input))
               #f))]))
-  (simulate-aux (cdr (assoc 'start automaton)) (string->list input)))
+  (simulate-aux (cdr (assoc 'start automaton)) (string->list input))
+)
