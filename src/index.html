@@ -7,6 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         #token-output span { font-weight: bold; }
+        #token-output .lexmessage { color: #f6055e; font-weight: normal; font-style: normal; }
+        #token-output .error      { color: #f92672; text-decoration: underline wavy #f92672; font-weight: bold; }
         .keyword    { color: #f92672; font-style: italic; }
         .state-id   { color: #a6e22e; }
         .symbol-id  { color: #e6db74; }
@@ -50,11 +52,11 @@
                 class="w-full rounded p-4 text-sm resize-y"
                 style="background:#1e1f1c; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace;"
                 placeholder="Automata dfa[&#10;
-                states [q0, q1, q2]&#10;
-                alphabet [a, b]&#10;
-                start q0&#10;
-                end q2&#10;
-                transitions [q0:a::q1, q1:b::q2]&#10;
+                states: [q0, q1, q2]&#10;
+                alphabet :[a, b]&#10;
+                start :q0&#10;
+                end :q2&#10;
+                transitions :[q0:a::q1, q1:b::q2]&#10;
                 ]">
             </textarea>
         </section>

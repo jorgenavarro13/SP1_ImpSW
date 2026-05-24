@@ -45,13 +45,23 @@
 
 ; For servlet: return an HTML snippet for an input string
 (define (tokenize-to-html input-str)
-  (let* ([tokens (first (Tokenizer input-str))])
-    (apply string-append
-           (map (lambda (tok)
-                  (if (equal? (first tok) "newline")
-                      "<br>\n"
-                      (token->span tok)))
-                tokens))))
+  (let* ([result     (Tokenizer input-str)]
+         [tokens     (first result)]
+         [error-line (second result)]
+         [token-html (apply string-append
+                            (map (lambda (tok)
+                                   (if (equal? (first tok) "newline")
+                                       "<br>\n"
+                                       (token->span tok)))
+                                 tokens))])
+    (if error-line
+        (string-append token-html
+                       "<br>\n"
+                       "<span class=\"lexmessage\">Unknown character or phrase on this line:</span>" "<br>\n"
+                       "<span class=\"error\">" (html-encode error-line) "</span>")
+        token-html)))
+
+
 
 ; ---- For standalone: generate a complete HTML document ----
 (define html-styles
@@ -68,6 +78,7 @@
    "  .flecha     { color:#66d9ef; }\n"
    "  .parentesis { color:#fd971f; }\n"
    "  .comment    { color:#75715e; font-style:italic; }\n"
+   "  .error      { color:#f8f8f2; text-decoration: underline;}\n"
    "</style>\n"))
 
 (define (tokens->full-html tokenized-lines)
