@@ -1,6 +1,6 @@
 #lang racket
 
-(provide tokenize-to-html)
+(provide tokenize-to-html tokens->html)
 
 (require "lexer.rkt")
 
@@ -43,23 +43,27 @@
         (string-append (apply string-append (map token->span tokens)) "<br>\n"))))
 
 
-; For servlet: return an HTML snippet for an input string
-(define (tokenize-to-html input-str)
-  (let* ([result     (Tokenizer input-str)]
-         [tokens     (first result)]
-         [error-line (second result)]
-         [token-html (apply string-append
-                            (map (lambda (tok)
-                                   (if (equal? (first tok) "newline")
-                                       "<br>\n"
-                                       (token->span tok)))
-                                 tokens))])
+; Build an HTML snippet from an already-computed token stream and optional error line.
+; token-stream — list of (label value) pairs from Tokenizer
+; error-line   — string if a lex error occurred, #f otherwise
+(define (tokens->html token-stream error-line)
+  (let ([token-html (apply string-append
+                           (map (lambda (tok)
+                                  (if (equal? (first tok) "newline")
+                                      "<br>\n"
+                                      (token->span tok)))
+                                token-stream))])
     (if error-line
         (string-append token-html
                        "<br>\n"
-                       "<span class=\"lexmessage\">Unknown character or phrase on this line:</span>" "<br>\n"
+                       "<span class=\"lexmessage\">Unknown character or phrase on this line:</span><br>\n"
                        "<span class=\"error\">" (html-encode error-line) "</span>")
         token-html)))
+
+; For servlet: return an HTML snippet for an input string
+(define (tokenize-to-html input-str)
+  (let ([result (Tokenizer input-str)])
+    (tokens->html (first result) (second result))))
 
 
 

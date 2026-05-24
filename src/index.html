@@ -23,6 +23,9 @@
 
         textarea::placeholder { color: #3e3d32; }
         textarea:focus { outline: none; }
+
+        .field-row { border-bottom: 1px solid #3e3d32; }
+        .field-row:last-child { border-bottom: none; }
     </style>
 </head>
 
@@ -51,13 +54,7 @@
             <textarea id="textbox" rows="10"
                 class="w-full rounded p-4 text-sm resize-y"
                 style="background:#1e1f1c; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace;"
-                placeholder="Automata dfa[&#10;
-                states: [q0, q1, q2]&#10;
-                alphabet :[a, b]&#10;
-                start :q0&#10;
-                end :q2&#10;
-                transitions :[q0:a::q1, q1:b::q2]&#10;
-                ]">
+                placeholder="Automata dfa[&#10;  states: [q0, q1, q2]&#10;  alphabet: [a, b]&#10;  start: q0&#10;  end: q2&#10;  transitions: [q0::a::q1, q1::b::q2]&#10;]">
             </textarea>
         </section>
 
@@ -66,14 +63,16 @@
             Processing...
         </div>
 
-        <!-- Error -->
+        <!-- Network / server error -->
         <div id="error-box" class="hidden rounded p-4 text-sm"
             style="background:#1e1f1c; border:1px solid #f92672; color:#f92672;"></div>
 
         <!-- Results (hidden until first run) -->
-        <section id="results" class="hidden">
+        <section id="results" class="hidden space-y-6">
             <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Output</span>
-            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+            <!-- Row 1: token stream + graph -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 <!-- Token stream panel -->
                 <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
@@ -99,11 +98,86 @@
                 </div>
 
             </div>
+
+            <!-- Row 2: parse errors (only when present) -->
+            <div id="parse-errors-panel" class="hidden rounded overflow-hidden" style="border:1px solid #f92672;">
+                <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #f92672;">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background:#f92672;"></span>
+                    <span class="text-xs uppercase tracking-widest" style="color:#f92672;">Parse Errors</span>
+                </div>
+                <ul id="parse-errors-list"
+                    class="p-4 text-sm space-y-1 list-none"
+                    style="background:#1e1f1c; color:#f92672; font-family:monospace;">
+                </ul>
+            </div>
+
+            <!-- Row 3: parsed automaton structure -->
+            <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
+                <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background:#ae81ff;"></span>
+                    <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Parsed Automaton</span>
+                </div>
+                <div id="automaton-output"
+                    class="text-sm"
+                    style="background:#1e1f1c;">
+                </div>
+            </div>
+
         </section>
 
     </main>
 
     <script>
+        function esc(s) {
+            return String(s ?? "")
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+        }
+
+        function renderParseErrors(errors) {
+            const panel = document.getElementById("parse-errors-panel");
+            const list  = document.getElementById("parse-errors-list");
+            if (errors && errors.length > 0) {
+                list.innerHTML = errors.map(e => `<li>⚠ ${esc(e)}</li>`).join("");
+                panel.classList.remove("hidden");
+            } else {
+                panel.classList.add("hidden");
+            }
+        }
+
+        function renderAutomaton(aut) {
+            const out = document.getElementById("automaton-output");
+
+            const field = (label, content) =>
+                `<div class="field-row flex gap-4 px-4 py-2">
+                    <span class="w-28 shrink-0 text-xs pt-0.5 uppercase tracking-widest" style="color:#75715e;">${label}</span>
+                    <span class="leading-relaxed">${content}</span>
+                 </div>`;
+
+            const stateTag = s =>
+                `<span class="inline-block px-1.5 py-0.5 rounded mr-1 text-xs" style="background:#1a1b18; color:#a6e22e; border:1px solid #3e3d32;">${esc(s)}</span>`;
+
+            const symTag = s =>
+                `<span class="inline-block px-1.5 py-0.5 rounded mr-1 text-xs" style="background:#1a1b18; color:#e6db74; border:1px solid #3e3d32;">${esc(s)}</span>`;
+
+            const arrow = `<span style="color:#ae81ff;" class="mx-1">::</span>`;
+
+            const transitionRows = (aut.transitions || []).map(t =>
+                `<div class="flex items-center gap-1 py-1">
+                    ${stateTag(t[0])} ${arrow} ${symTag(t[1])} ${arrow} ${stateTag(t[2])}
+                 </div>`
+            ).join("") || `<span style="color:#3e3d32;">—</span>`;
+
+            out.innerHTML =
+                field("name",        `<span style="color:#66d9ef;">${esc(aut.name) || "—"}</span>`) +
+                field("start",       aut.start   ? stateTag(aut.start)   : `<span style="color:#3e3d32;">—</span>`) +
+                field("end",         aut.end     ? stateTag(aut.end)     : `<span style="color:#3e3d32;">—</span>`) +
+                field("states",      (aut.states   || []).length ? (aut.states   || []).map(stateTag).join("") : `<span style="color:#3e3d32;">—</span>`) +
+                field("alphabet",    (aut.alphabet || []).length ? (aut.alphabet || []).map(symTag).join("")   : `<span style="color:#3e3d32;">—</span>`) +
+                field("transitions", transitionRows);
+        }
+
         async function run() {
             const text    = document.getElementById("textbox").value.trim();
             const btn     = document.getElementById("run-btn");
@@ -130,6 +204,10 @@
 
                 document.getElementById("token-output").innerHTML = data.result;
                 document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
+
+                renderParseErrors(data.parseErrors  || []);
+                renderAutomaton(  data.automaton    || {});
+
                 results.classList.remove("hidden");
 
             } catch (err) {
