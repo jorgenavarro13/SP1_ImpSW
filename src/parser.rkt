@@ -5,19 +5,18 @@
          parse-tokens)
 
 (define (parse-transitions flat-tokens)
-  ; First, isolate only the tokens inside transitions: [...]
-  ; Walk the list looking for groups of: stateId : symbol :: stateId
+  ; Walk the list looking for groups of: stateId :: symbol :: stateId
 
   (define (parse-transitions-aux tokens acc)
     (cond
       ; BASE CASE: less than 5 tokens left, nothing more to parse
       [(< (length tokens) 5) acc]
 
-      ; MATCH: found a transition pattern q0:0::q1
+      ; MATCH: found a transition pattern q0::0::q1
       [(and (equal? (first (first tokens))  "stateId")           ; from-state
-            (equal? (first (second tokens)) "dots")               ; :
-            (equal? (first (third tokens))  "alphabet-symbol")    ; symbol
-            (equal? (first (fourth tokens)) "transition-sybol")  ; :: typo in original label
+            (equal? (first (second tokens)) "transition-sybol")   ; ::
+            (member (first (third tokens))  '("alphabet-symbol" "identifier")) ; symbol
+            (equal? (first (fourth tokens)) "transition-sybol")   ; ::
             (equal? (first (fifth tokens))  "stateId"))           ; to-state
 
        (let* ([from   (second (first tokens))]
@@ -52,12 +51,14 @@
           #f ; Return false if not found
           (first result))))
 
-  ; Find the stateId that comes after a specific keyword
+  ; Find the stateId that comes after a specific keyword, skipping any dots separator
   (define (get-state-after keyword)
-      (let ([token-list (dropf tokens (lambda (t) (not (equal? (first t) keyword))))])
-        (if (and (pair? token-list) (pair? (cdr token-list)) (equal? (first (second token-list)) "stateId"))
-            (second (second token-list))
-            #f)))
+    (let* ([token-list (dropf tokens (lambda (t) (not (equal? (first t) keyword))))]
+           [rest       (dropf (if (pair? token-list) (cdr token-list) '())
+                              (lambda (t) (equal? (first t) "dots")))])
+      (if (and (pair? rest) (equal? (first (car rest)) "stateId"))
+          (second (car rest))
+          #f)))
 
   ; Build Automaton
   (list
