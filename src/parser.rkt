@@ -5,19 +5,18 @@
          parse-tokens)
 
 (define (parse-transitions flat-tokens)
-  ; First, isolate only the tokens inside transitions: [...]
-  ; Walk the list looking for groups of: stateId : symbol :: stateId
+  ; Walk the list looking for groups of: stateId :: symbol :: stateId
 
   (define (parse-transitions-aux tokens acc)
     (cond
       ; BASE CASE: less than 5 tokens left, nothing more to parse
       [(< (length tokens) 5) acc]
 
-      ; MATCH: found a transition pattern q0:0::q1
+      ; MATCH: found a transition pattern q0::0::q1
       [(and (equal? (first (first tokens))  "stateId")           ; from-state
-            (equal? (first (second tokens)) "dots")               ; :
+            (equal? (first (second tokens)) "transition-sybol")   ; ::
             (member (first (third tokens))  '("alphabet-symbol" "identifier")) ; symbol
-            (equal? (first (fourth tokens)) "transition-sybol")  ; ::
+            (equal? (first (fourth tokens)) "transition-sybol")   ; ::
             (equal? (first (fifth tokens))  "stateId"))           ; to-state
 
        (let* ([from   (second (first tokens))]
