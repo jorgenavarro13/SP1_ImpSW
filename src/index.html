@@ -1,81 +1,144 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Racket App</title>
-
-    <!-- CSS styles -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automaton Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        #token-output span { font-weight: bold; }
+        .keyword    { color: #f92672; font-style: italic; }
+        .state-id   { color: #a6e22e; }
+        .symbol-id  { color: #e6db74; }
+        .dos-puntos { color: #ae81ff; }
+        .coma       { color: #f8f8f2; }
+        .punto-coma { color: #ae81ff; }
+        .flecha     { color: #66d9ef; }
+        .parentesis { color: #fd971f; }
+        .comment    { color: #75715e; font-style: italic; }
+        .identifier { color: #66d9ef; }
+        .unknown    { color: #f8f8f2; }
 
-		#output {
-			background: #ffffff;
-			color: #f8f8f2;
-			font-family: monospace;
-			font-size: 15px;
-			padding: 20px;
-			border-radius: 6px;
-		}
-
-		#output span { font-weight: bold; }
-
-		.keyword    { color: #f92672; font-style: italic; }
-		.state-id   { color: #a6e22e; }
-		.symbol-id  { color: #e6db74; }
-		.dos-puntos { color: #ae81ff; }
-		.coma       { color: #000000; }
-		.punto-coma { color: #ae81ff; }
-		.flecha     { color: #66d9ef; }
-		.parentesis { color: #fd971f; }
-		.comment    { color: #75715e; font-style: italic; }
-		.identifier { color: #3659c4; }
-		.unknown    { color: #000000; }
-	</style>
-
+        textarea::placeholder { color: #3e3d32; }
+        textarea:focus { outline: none; }
+    </style>
 </head>
 
-<body>
+<body class="min-h-screen font-mono" style="background:#272822; color:#f8f8f2;">
 
-    <h1>Racket Hello App</h1>
+    <!-- Header -->
+    <header style="border-bottom:1px solid #3e3d32;" class="px-8 py-5">
+        <div class="max-w-6xl mx-auto flex items-end gap-4">
+            <h1 class="text-2xl font-bold" style="color:#a6e22e;">Automaton Visualizer</h1>
+            <span class="text-sm pb-0.5" style="color:#75715e;">Automaton definition → lexic analysis + token stream + graph + simulator</span>
+        </div>
+    </header>
 
-    <!-- input textbox -->
-    <textarea id="textbox" rows="10"  cols="50"></textarea>
-    <br><br>
+    <main class="max-w-6xl mx-auto px-8 py-8 space-y-6">
 
-    <!-- button that calls the run function -->
-    <button onclick="run()"> Run </button>
-    <br><br>
+        <!-- Input section -->
+        <section>
+            <div class="flex items-center justify-between mb-3">
+                <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Input</span>
+                <button id="run-btn" onclick="run()"
+                    class="px-6 py-2 rounded text-sm font-bold transition-opacity"
+                    style="background:#a6e22e; color:#272822;">
+                    &#9654; Run
+                </button>
+            </div>
+            <textarea id="textbox" rows="10"
+                class="w-full rounded p-4 text-sm resize-y"
+                style="background:#1e1f1c; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace;"
+                placeholder="Automata dfa[&#10;
+                states [q0, q1, q2]&#10;
+                alphabet [a, b]&#10;
+                start q0&#10;
+                end q2&#10;
+                transitions [q0:a::q1, q1:b::q2]&#10;
+                ]">
+            </textarea>
+        </section>
 
-    <!-- output goes in this div -->
-    <div id="output"></div>
+        <!-- Loading -->
+        <div id="loading" class="hidden text-center text-sm py-4" style="color:#75715e;">
+            Processing...
+        </div>
+
+        <!-- Error -->
+        <div id="error-box" class="hidden rounded p-4 text-sm"
+            style="background:#1e1f1c; border:1px solid #f92672; color:#f92672;"></div>
+
+        <!-- Results (hidden until first run) -->
+        <section id="results" class="hidden">
+            <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Output</span>
+            <div class="mt-3 grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                <!-- Token stream panel -->
+                <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
+                    <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background:#f92672;"></span>
+                        <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Token Stream</span>
+                    </div>
+                    <div id="token-output"
+                        class="p-4 text-sm leading-relaxed overflow-auto"
+                        style="background:#1e1f1c; max-height:24rem;">
+                    </div>
+                </div>
+
+                <!-- Graph panel -->
+                <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
+                    <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
+                        <span class="w-2.5 h-2.5 rounded-full" style="background:#66d9ef;"></span>
+                        <span class="text-xs uppercase tracking-widest" style="color:#75715e;">DFA Graph</span>
+                    </div>
+                    <div class="p-4 flex items-center justify-center" style="background:#1e1f1c; min-height:12rem;">
+                        <img id="graph-output" class="max-w-full rounded" alt="DFA graph" />
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
 
     <script>
-		async function run() {
+        async function run() {
+            const text    = document.getElementById("textbox").value.trim();
+            const btn     = document.getElementById("run-btn");
+            const loading = document.getElementById("loading");
+            const errBox  = document.getElementById("error-box");
+            const results = document.getElementById("results");
 
-			/* Use getElementById to extract the value from the textbox */
-		    const text =  document.getElementById("textbox").value;
+            errBox.classList.add("hidden");
+            results.classList.add("hidden");
+            loading.classList.remove("hidden");
+            btn.disabled = true;
+            btn.style.opacity = "0.5";
 
-		    /* Build the request */
-		    const response = await fetch("/", {
-		        method: "POST",
+            try {
+                const response = await fetch("/", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ input: text })
+                });
 
-		        headers: { "Content-Type": "application/json" },
+                if (!response.ok) throw new Error("Server error: " + response.status);
 
-		        body: JSON.stringify({
-		            /* Build the JSON body with the input text */
-                      input: text
-		        })
-		    });
+                const data = await response.json();
 
-		    const data = await response.json();
+                document.getElementById("token-output").innerHTML = data.result;
+                document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
+                results.classList.remove("hidden");
 
-		    /* Extract response data: result text and base64-encoded image
-		       Use getElementById to assign HTML content to the output div */
-		    document.getElementById("output").innerHTML =  data.result
-			+ "<br><br>"
-			+ "<img src='data:image/png;base64,"
-			+ data.image + "' />";
-		}
+            } catch (err) {
+                errBox.textContent = err.message;
+                errBox.classList.remove("hidden");
+            } finally {
+                loading.classList.add("hidden");
+                btn.disabled = false;
+                btn.style.opacity = "1";
+            }
+        }
     </script>
 
 </body>
