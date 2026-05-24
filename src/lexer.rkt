@@ -8,7 +8,7 @@
          flush-line
          Tokenizer
          print-token-stream
-         flatten-token)
+         )
 
 (define reMatch regexp-match-positions)
 
