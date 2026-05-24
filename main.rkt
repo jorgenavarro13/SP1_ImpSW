@@ -4,8 +4,10 @@
     
 (serve/servlet
             start
-            #:launch-browser? #t    ; Open browser
-            #:servlet-path "/"      ; en esta ruta, a partir de http://localhost:8000/
+            #:launch-browser? #f
+            #:listen-ip #f
+            #:servlet-path "/"
+            #:port (let ([p (getenv "PORT")]) (if p (string->number p) 8000))
 )
 
 ; Example usage
