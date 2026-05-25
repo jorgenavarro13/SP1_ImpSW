@@ -22,9 +22,14 @@ async function run() {
 
         const data = await response.json();
 
-        document.getElementById("token-output").innerHTML = data.result;
-        document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
-        results.classList.remove("hidden");
+        if (data.error) {
+            errBox.textContent = data.error;
+            errBox.classList.remove("hidden");
+        } else {
+            document.getElementById("token-output").innerHTML = data.result;
+            document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
+            results.classList.remove("hidden");
+        }
 
     } catch (err) {
         errBox.textContent = err.message;
@@ -59,14 +64,19 @@ async function simulate() {
 
         const data = await response.json();
 
-        if (data.accepted) {
+        if (data.error) {
+            verdict.textContent = "Error: " + data.error;
+            verdict.style.color = "#f92672";
+            path.textContent = "";
+        } else if (data.accepted) {
             verdict.textContent = "ACCEPTED";
             verdict.style.color = "#a6e22e";
+            path.textContent = data.path ? "Path: " + data.path : "";
         } else {
             verdict.textContent = "REJECTED";
             verdict.style.color = "#f92672";
+            path.textContent = data.path ? "Path: " + data.path : "";
         }
-        path.textContent = data.path ? "Path: " + data.path : "";
         resultDiv.classList.remove("hidden");
 
     } catch (err) {
