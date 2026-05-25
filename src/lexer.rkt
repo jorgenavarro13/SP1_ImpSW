@@ -92,22 +92,6 @@
 
 (define (Tokenizer input)
 
-  (define (flush-line remaining current-line)
-
-    (cond
-      [(= (string-length remaining) 0)
-       current-line]
-
-      [(char=? (string-ref remaining 0) #\newline)
-       current-line]
-
-      [else
-       (flush-line
-        (substring remaining 1)
-        (string-append
-         current-line
-         (string (string-ref remaining 0))))]))
-
   (define (tokenizer input current-line current-line-tokens token-stream)
 
     (cond
@@ -167,12 +151,29 @@
       [(empty? stream) (void)]
 
       [else
-       (displayln (car stream))
+      (display "(")
+      (display "\"")
+       (display (caar stream))
+      (display "\"")
+      (display "  ")
+      (display "\"")
+      (if(equal? (caar stream) "newline")
+       (display "\\n")
+       (display (cadar stream)))
+      (display "\"")
+      (displayln ")")
        (print-aux (cdr stream))]))
 
   (print-aux token-stream))
 
-; Generate token list
-(define (flatten-token token-stream)
-  (apply append token-stream)
-)
+(print-token-stream (car(Tokenizer "Automaton dfa [
+  states :[ q0, q1, q2 ]
+  alphabet: [ a, b, 0 ]
+  start: q0
+  end: q2
+  transitions :[ 
+    q0 :: a :: q1,
+    q1 :: b :: q2,
+    q2 :: 0 :: q0
+  ]
+]")))
