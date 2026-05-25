@@ -61,8 +61,8 @@
           ("stateId" #rx"^q[0-9]+"  )
           ("dots"    #rx"^:")
           ("transition-sybol" #rx"^::")
-          ("identifier" #rx"^[a-zA-Z_][a-zA-Z0-9_]*")
           ("alphabet-symbol" #rx"^[a-zA-Z0-9]")
+          ("identifier" #rx"^[a-zA-Z_][a-zA-Z0-9_]*")
           ("coma"    #rx"^,")
           ("semicol" #rx"^;")
           ("blank_space" #rx"^[ ]+")
@@ -91,22 +91,6 @@
 ; the longest coincidences of strings and their respective label asociated
 
 (define (Tokenizer input)
-
-  (define (flush-line remaining current-line)
-
-    (cond
-      [(= (string-length remaining) 0)
-       current-line]
-
-      [(char=? (string-ref remaining 0) #\newline)
-       current-line]
-
-      [else
-       (flush-line
-        (substring remaining 1)
-        (string-append
-         current-line
-         (string (string-ref remaining 0))))]))
 
   (define (tokenizer input current-line current-line-tokens token-stream)
 
@@ -167,12 +151,17 @@
       [(empty? stream) (void)]
 
       [else
-       (displayln (car stream))
+      (display "(")
+      (display "\"")
+       (display (caar stream))
+      (display "\"")
+      (display "  ")
+      (display "\"")
+      (if(equal? (caar stream) "newline")
+       (display "\\n")
+       (display (cadar stream)))
+      (display "\"")
+      (displayln ")")
        (print-aux (cdr stream))]))
 
   (print-aux token-stream))
-
-; Generate token list
-(define (flatten-token token-stream)
-  (apply append token-stream)
-)

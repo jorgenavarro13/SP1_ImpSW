@@ -4,16 +4,19 @@
 (provide simulate)
 
 (define (simulate automaton input)
-  (define (simulate-aux current-state input)
+  (define start-state  (hash-ref automaton 'start))
+  (define end-states   (hash-ref automaton 'end))
+  (define transitions  (hash-ref automaton 'transitions (hash)))
+
+  (define (simulate-aux current-state remaining)
     (cond
-      [(empty? input) (member current-state (list (cdr (assoc 'end automaton))))]
+      [(empty? remaining) (if (member current-state end-states) #t #f)]
       [else
-        (let* ([symbol (car input)]
-               [transition (findf
-                 (lambda (t) (and (equal? (first t) current-state)
-                                  (equal? (second t) (string symbol))))
-                 (cdr (assoc 'transitions automaton)))])
-          (if transition
-              (simulate-aux (third transition) (cdr input))
-              #f))]))
-  (simulate-aux (cdr (assoc 'start automaton)) (string->list input)))
+       (define symbol    (string (car remaining)))
+       (define from-map  (hash-ref transitions current-state (hash)))
+       (define next-state (hash-ref from-map symbol #f))
+       (if next-state
+           (simulate-aux next-state (cdr remaining))
+           #f)]))
+
+  (simulate-aux start-state (string->list input)))
