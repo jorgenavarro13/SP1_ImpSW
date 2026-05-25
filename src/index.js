@@ -37,16 +37,19 @@ async function run() {
 }
 
 async function simulate() {
-    const definition = document.getElementById("textbox").value.trim();
-    const simInput   = document.getElementById("sim-input").value;
-    const btn        = document.getElementById("sim-btn");
-    const resultDiv  = document.getElementById("sim-result");
-    const verdict    = document.getElementById("sim-verdict");
-    const path       = document.getElementById("sim-path");
+    const definition   = document.getElementById("textbox").value.trim();
+    const simInput     = document.getElementById("sim-input").value;
+    const btn          = document.getElementById("sim-btn");
+    const resultDiv    = document.getElementById("sim-result");
+    const verdict      = document.getElementById("sim-verdict");
+    const path         = document.getElementById("sim-path");
+    const syntaxErrors = document.getElementById("syntax-errors");
+    const errorList    = document.getElementById("syntax-error-list");
 
     btn.disabled = true;
     btn.style.opacity = "0.5";
     resultDiv.classList.add("hidden");
+    syntaxErrors.classList.add("hidden");
 
     try {
         const response = await fetch("/simulate", {
@@ -54,6 +57,15 @@ async function simulate() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ definition, input: simInput })
         });
+
+        if (response.status === 400) {
+            const data = await response.json();
+            errorList.innerHTML = (data.errors || ["Unknown syntax error"])
+                .map(e => `<li>${e}</li>`)
+                .join("");
+            syntaxErrors.classList.remove("hidden");
+            return;
+        }
 
         if (!response.ok) throw new Error("Server error: " + response.status);
 

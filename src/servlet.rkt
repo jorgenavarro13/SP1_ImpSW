@@ -41,16 +41,22 @@
 
           (define result (Tokenizer definition))
           (define flat-tokens (first result))
-          (define automaton (parse-tokens flat-tokens))
-          ; Simulation — normalize to boolean so JSON serializes as true/false
-          (define accepted? (if (simulate automaton input) #t #f))
-          ; Response
-          (response/output
-            #:code 200
-            #:mime-type #"application/json"
-            #:headers cors-headers
-            (lambda (out)
-              (write-json (hash 'accepted accepted?) out)))
+          (define recursive-descent (Recursive-descent flat-tokens))
+          (define success (first recursive-descent))
+          (define recursive-result (second recursive-descent))
+          (cond
+            [(not success)
+             (response/output #:code 400 #:mime-type #"application/json"
+                              #:headers cors-headers
+                              (lambda (out)
+                                (write-json (hash 'error "syntax error in automaton definition") out) ))]
+            [else
+             ; Simulation — normalize to boolean so JSON serializes as true/false
+             (define accepted? (if (simulate recursive-result input) #t #f))
+             (response/output #:code 200 #:mime-type #"application/json"
+                              #:headers cors-headers
+                              (lambda (out)
+                                (write-json (hash 'accepted accepted?) out)))])
         ]
         [else 
         (let* ([data      (bytes->jsexpr (request-post-data/raw request))]
