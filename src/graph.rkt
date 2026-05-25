@@ -1,51 +1,72 @@
 #lang racket
+(require racket/system)
+(require racket/runtime-path)
+(require racket/string)
+(require net/base64)
 
-(provide genera-img)          ; export this function for use in other modules
-(require racket/system)       ; for shell commands
-(require racket/runtime-path) ; for path handling
-(require net/base64)          ; for image encoding
+(provide generate-img)
 
-; set the working directory to this file's location and print it
 (define-runtime-path here ".")
 (current-directory here)
 (displayln (format "DIR: ~a" (current-directory)))
 
-; returns the .dot file content
-; note: \" for quotes inside the string
-; automata-rep is a placeholder for now
-(define (genera-dot automata-rep)
-    (define dot-text
-      "digraph DFA {
-        rankdir=LR;
+; Groups transitions by (from . to) pair so multiple symbols share one edge.
+; Returns an immutable hash: (from . to) -> (list sym ...)
+(define (group-transitions transitions)
+  (foldl (lambda (t acc)
+           (define key (cons (first t) (third t)))
+           (define sym (second t))
+           (hash-update acc key
+                        (lambda (syms) (append syms (list sym)))
+                        '()))
+         (hash)
+         transitions))
 
-        start -> q0 [label=\"\"];
-        q0 -> q1 [label=\"a\"];
-        q1 -> q2 [label=\"b\"];
-        q2 -> q2 [label=\"a,b\"];
+; Builds DOT source from the automaton hash.
+(define (generate-dot automaton)
+  (define states     (hash-ref automaton 'states))
+  (define start      (hash-ref automaton 'start))
+  (define end        (hash-ref automaton 'end))
+  (define trans-hash (hash-ref automaton 'transitions))
 
-        start [shape=plaintext];
-        q1 [shape=doublecircle];
-        q2 [shape=doublecircle];   }"
-    )
-    dot-text
-)
+  ; Flatten nested hash (from -> (sym -> to)) into list of (from sym to) triples
+  (define transitions
+    (apply append
+      (hash-map trans-hash
+        (lambda (from sym-hash)
+          (hash-map sym-hash
+            (lambda (sym to) (list from sym to)))))))
 
+  (define state-lines
+    (map (lambda (s)
+           (if (member s end)
+             (format "  ~a [shape=doublecircle];" s)
+             (format "  ~a [shape=circle];" s)))
+         states))
 
-(define  (genera-img  automata-rep )
-  ; get .dot content by calling genera-dot
-  (define dot-text (genera-dot automata-rep))
+  (define transition-lines
+    (hash-map (group-transitions transitions)
+      (lambda (key syms)
+        (format "  ~a -> ~a [label=\"~a\"];"
+                (car key) (cdr key)
+                (string-join syms ",")))))
 
-  ; ensure execution happens in the established directory
+  (string-join
+    (append
+      (list "digraph DFA {"
+            "  rankdir=LR;"
+            "  start [shape=plaintext label=\"\"];"
+            (format "  start -> ~a;" start))
+      state-lines
+      transition-lines
+      (list "}"))
+    "\n"))
+
+(define (generate-img automaton)
+  (define dot-text (generate-dot automaton))
   (parameterize ([current-directory here])
-      ; save the .dot file, replacing if it already exists
-      (call-with-output-file "dfa.dot" #:exists 'replace
-                             (lambda (out) (display dot-text out)))
-
-      ; call graphviz to generate the image
-      (system "dot -Tpng dfa.dot -o dfa.png")
-      (displayln "dfa.png generated")
-
-      ; return the base64-encoded image
-      (bytes->string/latin-1 (base64-encode (file->bytes "dfa.png") #""))
-  )
-)
+    (call-with-output-file "dfa.dot" #:exists 'replace
+                           (lambda (out) (display dot-text out)))
+    (system "dot -Tpng dfa.dot -o dfa.png")
+    (displayln "dfa.png generated")
+    (bytes->string/latin-1 (base64-encode (file->bytes "dfa.png") #""))))
