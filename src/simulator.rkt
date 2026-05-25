@@ -4,19 +4,24 @@
 (provide simulate)
 
 (define (simulate automaton input)
-  (define start-state  (hash-ref automaton 'start))
-  (define end-states   (hash-ref automaton 'end))
-  (define transitions  (hash-ref automaton 'transitions (hash)))
+  (define start-state (hash-ref automaton 'start))
+  (define end-states  (hash-ref automaton 'end))
+  (define transitions (hash-ref automaton 'transitions (hash)))
 
-  (define (simulate-aux current-state remaining)
+  ; Expand one symbol from every state in the active set
+  (define (step states symbol)
+    (remove-duplicates
+     (apply append
+            (map (lambda (state)
+                   (hash-ref (hash-ref transitions state (hash)) symbol '()))
+                 states))))
+
+  (define (simulate-aux states remaining)
     (cond
-      [(empty? remaining) (if (member current-state end-states) #t #f)]
+      [(null? states) #f]
+      [(empty? remaining)
+       (if (ormap (lambda (s) (member s end-states)) states) #t #f)]
       [else
-       (define symbol    (string (car remaining)))
-       (define from-map  (hash-ref transitions current-state (hash)))
-       (define next-state (hash-ref from-map symbol #f))
-       (if next-state
-           (simulate-aux next-state (cdr remaining))
-           #f)]))
+       (simulate-aux (step states (string (car remaining))) (cdr remaining))]))
 
-  (simulate-aux start-state (string->list input)))
+  (simulate-aux (list start-state) (string->list input)))
