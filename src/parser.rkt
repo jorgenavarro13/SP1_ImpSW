@@ -1,72 +1,64 @@
 #lang racket
-; Parser: converts a flat token list into an automaton data structure
+(require racket/set)
 
 (provide parse-transitions
          parse-tokens)
 
-(define (parse-transitions flat-tokens)
-  ; Walk the list looking for groups of: stateId :: symbol :: stateId
+;Recursive-descent parser for the automaton language.
+;
+; Grammar (whitespace and newlines are stripped before parsing):
+;
+;   program         → rw-automata identifier '[' sections ']'
+;   sections        → section*
+;   section         → states-sec | alphabet-sec | start-sec
+;                   | end-sec   | transitions-sec
+;   states-sec      → rw-states      '[' state-list      ']'
+;   alphabet-sec    → rw-alphabet    '[' symbol-list     ']'
+;   start-sec       → rw-start  stateId
+;   end-sec         → rw-end    stateId
+;   transitions-sec → rw-transitions '[' transition-list ']'
+;   state-list      → stateId  (',' stateId)*  | ε
+;   symbol-list     → symbol   (',' symbol)*   | ε
+;   transition-list → transition (',' transition)* | ε
+;   transition      → stateId ':' alphabet-symbol '::' stateId
+;
+; Note: '[' = right-straigth-parenthesis   ']' = left-straigth-parenthesis
+;
+; Returns: (list automaton-alist errors-list)
+;   automaton-alist  — list of cons pairs keyed by 'name 'states 'alphabet
+;                      'start 'end 'transitions  (compatible with simulator.rkt)
+;   errors-list      — list of error strings; empty when syntax is valid
 
-  (define (parse-transitions-aux tokens acc)
-    (cond
-      ; BASE CASE: less than 5 tokens left, nothing more to parse
-      [(< (length tokens) 5) acc]
-
-      ; MATCH: found a transition pattern q0::0::q1
-      [(and (equal? (first (first tokens))  "stateId")           ; from-state
-            (equal? (first (second tokens)) "transition-sybol")   ; ::
-            (member (first (third tokens))  '("alphabet-symbol" "identifier")) ; symbol
-            (equal? (first (fourth tokens)) "transition-sybol")   ; ::
-            (equal? (first (fifth tokens))  "stateId"))           ; to-state
-
-       (let* ([from   (second (first tokens))]
-              [symbol (second (third tokens))]
-              [to     (second (fifth tokens))]
-              [new-transition (list from symbol to)])
-         ; Consume 5 tokens, add transition, recurse
-         (parse-transitions-aux (list-tail tokens 5)
-                                (append acc (list new-transition))))
-      ]
-
-      ; NO MATCH: skip one token and keep looking
-      [else (parse-transitions-aux (cdr tokens) acc)]
-    )
-  )
-
-  (parse-transitions-aux flat-tokens '())
+(define (tok-label t) 
+  (first t)
 )
 
-; Parse
+(define (tok-value t)
+  (second t)
+)
+
+(define (expect label tokens)
+  (define token (car tokens))
+  (if (equal? label (tok-label token))
+    (values (tok-value token) (cdr tokens))
+    (error "expected ~a but got ~a" label (tok-label token))
+  )
+)
+
+(define (parse-program tokens)
+  (define-values (_ tokens) (expect 'rw-automata tokens))
+  (define-values (name tokens) (expect 'identifier tokens))
+  (define-values (_ tokens) (expect 'right-straigth-parenthesis tokens))
+  (parse-sections tokens)
+  (define-values (_ tokens) (expect 'left-straigth-parenthesis tokens))
+)
+
 (define (parse-tokens raw-tokens)
-  ; Strip whitespace tokens produced by the new Tokenizer
-  (define tokens (filter (lambda (t) (not (equal? (first t) "blank_space"))) raw-tokens))
-  ; Get all label values
-  (define (get-all label)
-    (remove-duplicates (map second (filter (lambda (t) (equal? (first t) label)) tokens)))
-  )
-  ; Get label value
-  (define (get-first label)
-    (let ([result (get-all label)])
-      (if (empty? result)
-          #f ; Return false if not found
-          (first result))))
-
-  ; Find the stateId that comes after a specific keyword, skipping any dots separator
-  (define (get-state-after keyword)
-    (let* ([token-list (dropf tokens (lambda (t) (not (equal? (first t) keyword))))]
-           [rest       (dropf (if (pair? token-list) (cdr token-list) '())
-                              (lambda (t) (equal? (first t) "dots")))])
-      (if (and (pair? rest) (equal? (first (car rest)) "stateId"))
-          (second (car rest))
-          #f)))
-
-  ; Build Automaton
+ 
   (list
-    (cons 'name        (get-first "identifier"))
-    (cons 'states      (get-all "stateId"))
-    (cons 'start       (get-state-after "rw-start"))
-    (cons 'end         (get-state-after "rw-end"))
-    (cons 'alphabet    (get-all "alphabet-symbol"))
-    (cons 'transitions (parse-transitions tokens))
-  )
-)
+    (cons 'name        name)
+    (cons 'states      (find 'states      '()))
+    (cons 'start       (find 'start       #f))
+    (cons 'end         (find 'end         #f))
+    (cons 'alphabet    (find 'alphabet    '()))
+    (cons 'transitions (find 'transitions '()))))
