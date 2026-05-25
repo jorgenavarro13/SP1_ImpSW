@@ -61,10 +61,487 @@
 \end{titlepage}
 
 \section{Introducción}
+La creación de un lenguaje específico para definir autómatas es una tarea que combina aspectos de teoría de la computación, diseño de lenguajes y desarrollo de software. 
+Este proyecto tiene como objetivo desarrollar un lenguaje que permita a los usuarios describir autómatas de manera clara y concisa, facilitando su análisis y simulación. 
+Además, se implementará un sistema de simulación que permita a los usuarios probar sus autómatas con diferentes entradas, proporcionando retroalimentación inmediata sobre su comportamiento.           
 
 \section{Diseño y metodología}
 
+
+
+
+\section{Estructura del Lenguaje}
+
+El lenguaje permite definir autómatas finitos deterministas (DFA).
+Un programa es siempre un único bloque \texttt{Automaton} con cinco secciones obligatorias:
+estados, alfabeto, estado inicial, estados finales y transiciones.
+
+\subsection{Sintaxis general}
+
+\begin{verbatim}
+Automaton <identificador> [
+  states      : [ <q>, ... ]
+  alphabet    : [ <s>, ... ]
+  start       : <q>
+  end         : [ <q>, ... ]
+  transitions : [
+    <q_origen> :: <simbolo> :: <q_destino>,
+    ...
+  ]
+]
+\end{verbatim}
+
+\subsection{Ejemplo concreto}
+
+El siguiente autómata acepta únicamente la cadena \texttt{ab}:
+
+\begin{verbatim}
+Automaton dfa [
+  states      : [ q0, q1, q2 ]
+  alphabet    : [ a, b ]
+  start       : q0
+  end         : [ q2 ]
+  transitions : [
+    q0 :: a :: q1,
+    q1 :: b :: q2
+  ]
+]
+\end{verbatim}
+
+\subsection{Categorías de tokens}
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Tipo} & \textbf{Patrón (regex)} & \textbf{Ejemplo} \\
+\hline
+\texttt{rw-automata}      & \texttt{Automaton}                             & \texttt{Automaton}   \\
+\texttt{rw-states}        & \texttt{\textasciicircum states}               & \texttt{states}      \\
+\texttt{rw-alphabet}      & \texttt{\textasciicircum alphabet}             & \texttt{alphabet}    \\
+\texttt{rw-start}         & \texttt{\textasciicircum start}                & \texttt{start}       \\
+\texttt{rw-end}           & \texttt{\textasciicircum end}                  & \texttt{end}         \\
+\texttt{rw-transitions}   & \texttt{\textasciicircum transitions}          & \texttt{transitions} \\
+\texttt{stateId}          & \texttt{\textasciicircum q[0-9]+}              & \texttt{q0}, \texttt{q12} \\
+\texttt{alphabet-symbol}  & \texttt{\textasciicircum[a-zA-Z0-9]}           & \texttt{a}, \texttt{0} \\
+\texttt{identifier}       & \texttt{\textasciicircum[a-zA-Z\_][a-zA-Z0-9\_]*} & \texttt{dfa} \\
+\texttt{transition-sybol} & \texttt{\textasciicircum::}                    & \texttt{::}          \\
+\texttt{dots}             & \texttt{\textasciicircum:}                     & \texttt{:}           \\
+\texttt{coma}             & \texttt{\textasciicircum,}                     & \texttt{,}           \\
+\texttt{right-straigth-parenthesis} & \texttt{\textasciicircum[}           & \texttt{[}           \\
+\texttt{left-straigth-parenthesis}  & \texttt{\textasciicircum]}           & \texttt{]}           \\
+\texttt{blank\_space}     & \texttt{\textasciicircum[ ]+}                  & espacios             \\
+\texttt{newline}          & \texttt{\textasciicircum\textbackslash n}      & salto de línea       \\
+\hline
+\end{tabular}
+\end{center}
+
+\noindent\textbf{Nota:} cuando dos patrones tienen el mismo prefijo (p.~ej.\ \texttt{:} y \texttt{::}),
+el tokenizador siempre selecciona la coincidencia más larga, por lo que \texttt{::}
+se clasifica como \texttt{transition-sybol} y nunca como dos \texttt{dots} consecutivos.
+
+% -----------------------------------------------------------------
+\section{Analizador Léxico}
+
+El analizador léxico está implementado en \texttt{lexer.rkt} y exporta la función \texttt{Tokenizer}.
+Su responsabilidad es convertir la cadena de texto de entrada en un flujo lineal de tokens
+que el parser pueda consumir.
+
+\subsection{Coincidencia máxima (\textit{maximal munch})}
+
+En cada posición de la cadena, el tokenizador aplica \emph{todas} las expresiones regulares
+de forma simultánea y se queda con la que produce la subcadena más larga.
+Este principio se denomina \textit{maximal munch} y garantiza que patrones como
+\texttt{::} tienen prioridad sobre \texttt{:}.
+
+El proceso se implementa en dos funciones auxiliares:
+
+\begin{itemize}
+  \item \texttt{getMatch (label-regex, str)}: aplica la regex al inicio de \texttt{str}
+        y devuelve la tripla \texttt{(label, longitud, lexema)}.
+        Si no hay coincidencia retorna \texttt{("none", 0, "")}.
+  \item \texttt{getMax (matches)}: recibe la lista de resultados de \texttt{getMatch}
+        para todas las reglas y devuelve la tripla con mayor longitud.
+\end{itemize}
+
+\subsection{Gestión de líneas y errores léxicos}
+
+El tokenizador mantiene dos acumuladores a lo largo de la recursión:
+
+\begin{itemize}
+  \item \texttt{current-line-tokens}: tokens recolectados en la línea en curso.
+  \item \texttt{token-stream}: tokens consolidados de líneas ya completas.
+\end{itemize}
+
+Al encontrar un \texttt{newline}, los tokens de la línea actual pasan al
+\texttt{token-stream}.
+Si en cambio se produce un error léxico (ninguna regex coincide), la función
+\texttt{flush-line} descarta el resto de la línea y los tokens parciales acumulados
+en \texttt{current-line-tokens} se descartan también, impidiendo que fragmentos
+inválidos lleguen al parser.
+
+\subsection{Salida}
+
+\texttt{Tokenizer} devuelve una lista de dos elementos:
+
+\begin{verbatim}
+(list token-stream error-line)
+\end{verbatim}
+
+\begin{itemize}
+  \item \texttt{token-stream}: lista de pares \texttt{(tipo lexema)}, por ejemplo:\\
+        \texttt{(("rw-automata" "Automaton") ("identifier" "dfa") ("dots" ":") \ldots)}
+  \item \texttt{error-line}: \texttt{\#f} si el análisis fue exitoso, o la subcadena
+        que causó el error en caso contrario.
+\end{itemize}
+
+% -----------------------------------------------------------------
+\section{Analizador Sintáctico (Descenso Recursivo)}
+
+El analizador sintáctico está implementado en \texttt{parser.rkt} y emplea la técnica
+de \textbf{descenso recursivo predictivo LL(1)}.
+Sigue estrictamente las reglas de programación funcional: no se usa \texttt{set!}
+ni ninguna otra forma de mutación.
+
+\subsection{Gramática formal}
+
+Cada regla de producción corresponde directamente a una función en el código.
+La notación usa \texttt{|} para alternativas y los tokens aparecen en
+\texttt{tipográfica}.
+
+\begin{verbatim}
+automaton
+  → rw-automata  identifier  [
+      statesDefinition  alphabetDefinition
+      startDefinition   endDefinition
+      transitionsDefinition  ]
+
+statesDefinition  → rw-states  dots  [  stateId  statesPrime
+statesPrime       → ,  stateId  statesPrime  |  ]
+
+alphabetDefinition → rw-alphabet  dots  [  alphabet-symbol  alphabetPrime
+alphabetPrime      → ,  alphabet-symbol  alphabetPrime  |  ]
+
+startDefinition   → rw-start  dots  stateId
+
+endDefinition     → rw-end  dots  [  stateId  endPrime
+endPrime          → ,  stateId  endPrime  |  ]
+
+transitionsDefinition → rw-transitions  dots  [  transition  transitionsPrime
+transitionsPrime      → ,  transition  transitionsPrime  |  ]
+transition            → stateId  ::  alphabet-symbol  ::  stateId
+\end{verbatim}
+
+\subsection{Encadenamiento funcional de resultados}
+
+Cada función de análisis recibe y devuelve la misma tripla:
+
+\begin{verbatim}
+(syntax-X tokens auto errors)
+    → (list remaining-tokens auto errors)
+\end{verbatim}
+
+\begin{itemize}
+  \item \texttt{tokens}: lista de tokens aún no consumidos.
+  \item \texttt{auto}: hash Racket con el autómata en construcción (inmutable;
+        cada paso produce un hash nuevo con \texttt{hash-set}).
+  \item \texttt{errors}: lista acumulada de mensajes de error.
+\end{itemize}
+
+\texttt{syntax-automaton} encadena secuencialmente los cinco sub-analizadores
+pasando el resultado de uno como entrada del siguiente:
+
+\begin{verbatim}
+(define states-r  (syntax-statesDefinition     body-tokens  auto   errors))
+(define alpha-r   (syntax-alphabetDefinition   tokens-r1    auto-r1  err-r1))
+(define start-r   (syntax-startDefinition      tokens-r2    ...))
+...
+\end{verbatim}
+
+\subsection{Estructura del autómata resultante}
+
+Al finalizar sin errores el parser produce el siguiente hash:
+
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Clave}        & \textbf{Tipo}         & \textbf{Descripción} \\
+\hline
+\texttt{'name}        & string                & Identificador del autómata \\
+\texttt{'states}      & lista de strings      & Conjunto de estados $Q$ \\
+\texttt{'alphabet}    & lista de strings      & Alfabeto de entrada $\Sigma$ \\
+\texttt{'start}       & string                & Estado inicial $q_0$ \\
+\texttt{'end}         & lista de strings      & Estados de aceptación $F \subseteq Q$ \\
+\texttt{'transitions} & hash de hashes        & Función de transición $\delta$ \\
+\hline
+\end{tabular}
+\end{center}
+
+La función de transición se almacena como un hash anidado donde
+\texttt{transitions[q][s]} = $q'$ representa $\delta(q, s) = q'$:
+
+\begin{verbatim}
+#hash((q0 . #hash((a . q1)))
+      (q1 . #hash((b . q2)))
+      (q2 . #hash((0 . q0))))
+\end{verbatim}
+
+\subsection{Manejo de errores sintácticos}
+
+Cada función genera mensajes con el formato:
+
+\begin{verbatim}
+"Expected <esperado>, received <encontrado>"
+\end{verbatim}
+
+Los errores se acumulan sin detener el análisis, lo que permite reportar múltiples
+problemas en una sola pasada.
+La función pública \texttt{Recursive-descent} devuelve:
+
+\begin{itemize}
+  \item \texttt{(list \#t auto)} — análisis exitoso.
+  \item \texttt{(list \#f errors)} — uno o más errores; \texttt{errors} es la lista
+        de mensajes que el servidor retorna al cliente con código HTTP 400.
+\end{itemize}
+
+\subsection{Validación semántica}
+
+Una vez que el análisis sintáctico concluye sin errores, \texttt{Recursive-descent}
+invoca a \texttt{validate-automaton} para verificar la coherencia semántica del
+autómata construido.
+Los errores sintácticos impiden que este paso se ejecute: la validación semántica
+solo tiene sentido sobre un autómata bien formado estructuralmente.
+
+Las comprobaciones realizadas son:
+
+\begin{itemize}
+  \item El estado inicial (\texttt{start}) debe estar declarado en \texttt{states}.
+  \item Cada estado de aceptación en \texttt{end} debe estar declarado en
+        \texttt{states}.
+  \item En cada transición $(\mathit{from}, \mathit{sym}, \mathit{to})$:
+    \begin{itemize}
+      \item \textit{from} debe ser un estado declarado.
+      \item \textit{sym} debe pertenecer al alfabeto declarado.
+      \item \textit{to} debe ser un estado declarado.
+    \end{itemize}
+\end{itemize}
+
+Los mensajes de error semántico incluyen el identificador problemático entre
+comillas simples, por ejemplo:
+
+\begin{verbatim}
+"Transition: destination 'q99' is not a declared state"
+"Transition: symbol 'x' is not in the alphabet"
+\end{verbatim}
+
+Esta convención permite que la interfaz web localice y seleccione el término
+incorrecto directamente en el área de texto del editor (véase la siguiente sección).
+
+\subsection{Visualización de errores en la interfaz}
+
+Tanto el botón \textbf{Run} como el botón \textbf{Simulate} invocan
+\texttt{Recursive-descent} antes de proceder.
+Si se detecta cualquier error (sintáctico o semántico), el servidor responde con
+HTTP~400 y un objeto JSON de la forma:
+
+\begin{verbatim}
+{ "errors": [ "mensaje 1", "mensaje 2", ... ] }
+\end{verbatim}
+
+El cliente reacciona de la siguiente manera:
+
+\begin{itemize}
+  \item Oculta la sección de resultados (flujo de tokens, grafo y simulador)
+        de modo que el usuario solo ve los errores, sin información parcial
+        que pueda ser confusa.
+  \item Muestra el panel \textbf{Errors} con la lista numerada de mensajes.
+  \item Aplica un borde rojo al área de texto del editor como indicación visual
+        inmediata de que la definición contiene problemas.
+  \item Para el primer error que contenga un identificador entre comillas simples,
+        busca ese término en el texto del editor, lo selecciona con
+        \texttt{setSelectionRange} y desplaza el área de texto hasta situarlo
+        en pantalla.
+        Esto permite al usuario ver exactamente en qué parte de la definición
+        se encuentra el elemento no declarado.
+\end{itemize}
+
+Cuando la siguiente ejecución de Run o Simulate tiene éxito, el panel de errores
+se oculta, el borde rojo desaparece y se muestran los resultados normales.
+
+% -----------------------------------------------------------------
 \section{Pruebas}
+
+Para validar el correcto funcionamiento del sistema se definen dos autómatas que reconocen
+el mismo lenguaje: cadenas sobre $\{a, b\}$ que \textbf{terminan con la subcadena \texttt{ab}}.
+Esto permite comparar directamente la definición determinista y la no determinista.
+
+% ── DFA ──────────────────────────────────────────────────────────────────────
+\subsection{DFA — Autómata Finito Determinista}
+
+El DFA resuelve el problema de forma explícita: necesita estados adicionales para
+registrar si el sufijo visto hasta ahora puede continuar hacia \texttt{ab},
+y transiciones de \emph{retroceso} cuando la secuencia se rompe.
+
+\begin{verbatim}
+Automata dfa [
+  states: [q0, q1, q2]
+  alphabet: [a, b]
+  start: q0
+  end: [q2]
+  transitions: [q0::a::q1, q0::b::q0, q1::a::q1, q1::b::q2, q2::a::q1, q2::b::q0]
+]
+\end{verbatim}
+
+\noindent Lógica de los estados:
+\begin{itemize}
+  \item \texttt{q0} — estado inicial; no se ha visto ningún prefijo relevante.
+  \item \texttt{q1} — se acaba de leer una \texttt{a}; si llega \texttt{b} se acepta.
+  \item \texttt{q2} — estado de aceptación; se ha leído \texttt{ab}.
+        Si llega \texttt{a} hay que volver a \texttt{q1}; si llega \texttt{b}, a \texttt{q0}.
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Cadena de entrada} & \textbf{Resultado esperado} \\
+\hline
+\texttt{ab}   & ACCEPTED \\
+\texttt{aab}  & ACCEPTED \\
+\texttt{bab}  & ACCEPTED \\
+\texttt{b}    & REJECTED \\
+\texttt{ba}   & REJECTED \\
+\texttt{aba}  & REJECTED \\
+\hline
+\end{tabular}
+\end{center}
+
+% ── NFA ──────────────────────────────────────────────────────────────────────
+\subsection{NFA — Autómata Finito No Determinista}
+
+El NFA expresa el mismo lenguaje con menos transiciones gracias al no determinismo:
+el estado \texttt{q0} tiene \emph{dos} transiciones sobre \texttt{a} — una que permanece
+en \texttt{q0} (la \texttt{a} aún no inicia el sufijo final) y otra que avanza a
+\texttt{q1} (la \texttt{a} sí podría ser el inicio del sufijo \texttt{ab}).
+El simulador explora ambas ramas en paralelo (BFS sobre el conjunto de estados activos).
+
+\begin{verbatim}
+Automata nfa [
+  states: [q0, q1, q2]
+  alphabet: [a, b]
+  start: q0
+  end: [q2]
+  transitions: [q0::a::q0, q0::a::q1, q0::b::q0, q1::b::q2]
+]
+\end{verbatim}
+
+\noindent Lógica de los estados:
+\begin{itemize}
+  \item \texttt{q0} — estado inicial; consume cualquier prefijo arbitrario.
+  \item \texttt{q1} — se acaba de ``apostar'' por el inicio del sufijo \texttt{ab};
+        solo avanza si llega \texttt{b}.
+  \item \texttt{q2} — estado de aceptación; se ha confirmado el sufijo \texttt{ab}.
+\end{itemize}
+
+\begin{center}
+\begin{tabular}{|l|c|}
+\hline
+\textbf{Cadena de entrada} & \textbf{Resultado esperado} \\
+\hline
+\texttt{ab}   & ACCEPTED \\
+\texttt{aab}  & ACCEPTED \\
+\texttt{bab}  & ACCEPTED \\
+\texttt{b}    & REJECTED \\
+\texttt{ba}   & REJECTED \\
+\texttt{aba}  & REJECTED \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection{Comparación}
+
+Ambas definiciones reconocen exactamente el mismo lenguaje pero difieren en su
+estructura: el DFA requiere 6 transiciones y gestión explícita de retrocesos,
+mientras que el NFA necesita solo 4 transiciones al delegar la exploración de
+alternativas al simulador.
+Esto ilustra la equivalencia teórica entre DFA y NFA y el coste práctico
+de determinizar un autómata.
+
+
+\section{Prerequisitos}
+
+\subsection{Graphviz}
+
+El sistema genera una imagen del autómata a partir de un archivo \texttt{.dot}.
+Para ello se apoya en \textbf{Graphviz}, una herramienta de código abierto que
+convierte descripciones textuales de grafos en imágenes (PNG, SVG, PDF, etc.).
+Sin Graphviz instalado, el servidor no puede producir la visualización del DFA.
+
+\begin{itemize}
+  \item \textbf{Windows:} descargar el instalador desde \url{https://graphviz.org/download/}
+        y agregar el directorio \texttt{bin/} al \texttt{PATH} del sistema.
+  \item \textbf{Linux (Debian/Ubuntu):}
+\begin{verbatim}
+sudo apt-get install graphviz
+\end{verbatim}
+  \item \textbf{macOS:}
+\begin{verbatim}
+brew install graphviz
+\end{verbatim}
+\end{itemize}
+
+\subsection{Docker}
+
+El proyecto se distribuye y ejecuta dentro de un contenedor \textbf{Docker}.
+Las razones principales son:
+
+\begin{itemize}
+  \item \textbf{Portabilidad:} Racket, Graphviz y todas sus dependencias quedan
+        encapsuladas en la imagen. Cualquier máquina con Docker instalado puede
+        levantar el servidor con un único comando, sin necesidad de instalar Racket
+        ni configurar el entorno manualmente.
+  \item \textbf{Reproducibilidad:} la imagen fija las versiones exactas de todas
+        las herramientas, eliminando el problema de \textit{``funciona en mi máquina''}.
+  \item \textbf{Aislamiento:} el servidor corre en su propio espacio de red y sistema
+        de archivos, sin interferir con el resto del sistema operativo anfitrión.
+  \item \textbf{Despliegue simplificado:} el mismo artefacto que se prueba localmente
+        es el que se despliega en producción, sin pasos de reconfiguración.
+\end{itemize}
+
+\subsection{Configuración de red y documentación del servlet}
+
+Al desplegar el servidor Racket dentro de Docker surgió un problema no obvio:
+\texttt{serve/servlet} enlaza el socket en \texttt{127.0.0.1} (loopback)
+de forma predeterminada.
+Dentro de un contenedor, esa dirección es \emph{local al contenedor},
+por lo que el mecanismo de port-forwarding de Docker
+(\texttt{-p 8080:8080}) no puede alcanzarla desde el anfitrión.
+
+La solución, encontrada en la
+\href{https://docs.racket-lang.org/web-server}{documentación oficial del web-server de Racket},
+es pasar el parámetro \texttt{\#:listen-ip \#f}, que indica a Racket que escuche
+en \emph{todas} las interfaces de red (\texttt{0.0.0.0}):
+
+\begin{verbatim}
+(serve/servlet start
+               #:port 8080
+               #:listen-ip #f   ; escucha en 0.0.0.0, no solo loopback
+               ...)
+\end{verbatim}
+
+Sin este parámetro el contenedor arranca sin errores pero las peticiones del
+anfitrión (o de internet) nunca llegan al proceso Racket.
+
+La misma documentación fue necesaria para comprender el uso correcto de
+\texttt{hash-ref} y \texttt{list-ref}, las funciones estándar de Racket para
+acceder a estructuras de datos inmutables:
+
+\begin{itemize}
+  \item \texttt{(hash-ref tabla clave)} — devuelve el valor asociado a \texttt{clave}
+        en un hash inmutable; lanza error si la clave no existe a menos que se
+        proporcione un valor por defecto: \texttt{(hash-ref tabla clave valor-defecto)}.
+  \item \texttt{(list-ref lista i)} — devuelve el elemento en la posición \texttt{i}
+        (base~0) de una lista; se usó en el parser para acceder a los cinco tokens
+        de una transición sin descomponer manualmente la lista con \texttt{car}/\texttt{cdr}.
+\end{itemize}
 
 \medskip
 
