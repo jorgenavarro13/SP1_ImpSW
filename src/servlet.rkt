@@ -1,11 +1,18 @@
 #lang racket
 (provide start)
 
+(require racket/list)
+(require racket/runtime-path)
 (require web-server/servlet)
 (require web-server/http/response-structs)
+(require net/url)
 (require json)
 (require "graph.rkt")
 (require "html-gen.rkt")
+(require "lexer.rkt"
+         "parser.rkt"
+         "simulator.rkt")
+(define-runtime-path src-dir ".")
 
 (define cors-headers
   (list (make-header #"Access-Control-Allow-Origin"  #"*")
@@ -23,20 +30,53 @@
                       (lambda (out) (void)))]
 
     [(equal? method #"POST")
-       (define data      (bytes->jsexpr (request-post-data/raw request)))
-       (define input-str (hash-ref data 'input))
+      (define endpoint (url->string (request-uri request)))
+      (cond 
+        [(equal? endpoint "/simulate")
+          (define body (bytes->string/utf-8 (request-post-data/raw request)))
+          ; Extract data
+          (define data (string->jsexpr body))
+          (define definition (hash-ref data 'definition))
+          (define input (hash-ref data 'input))
 
-       (define json-hash
-         (hash 'result (tokenize-to-html input-str)
-               'image  (genera-img input-str)))
+          (define result (Tokenizer definition))
+          (define flat-tokens (first result))
+          (define automaton (parse-tokens flat-tokens))
+          ; Simulation — normalize to boolean so JSON serializes as true/false
+          (define accepted? (if (simulate automaton input) #t #f))
+          ; Response
+          (response/output
+            #:code 200
+            #:mime-type #"application/json"
+            #:headers cors-headers
+            (lambda (out)
+              (write-json (hash 'accepted accepted?) out)))
+        ]
+        [else 
+        (let* ([data      (bytes->jsexpr (request-post-data/raw request))]
+          [input-str (hash-ref data 'input)]
+          [json-hash
+          (hash 'result (tokenize-to-html input-str)
+                'image  (genera-img input-str))])
 
-       (response/output #:code 200 #:mime-type #"application/json"
-                        #:headers cors-headers
-                        (lambda (out) (write-json json-hash out)))]
+          (response/output #:code 200 #:mime-type #"application/json"
+            #:headers cors-headers
+            (lambda (out) (write-json json-hash out))))
+        ]
+      )
+    ]
 
-    ; GET — serve the page
+    ; GET — serve static files or the main page
     [else
-     (response/output #:code 200 #:mime-type #"text/html"
-                      #:headers cors-headers
-                      (lambda (out) (display (file->string "index.html") out)))]))
+     (define path-parts (map path/param-path (url-path (request-uri request))))
+     (define last-seg   (if (null? path-parts) "" (last path-parts)))
+     (cond
+       [(equal? last-seg "index.js")
+        (response/output #:code 200 #:mime-type #"application/javascript"
+                         #:headers cors-headers
+                         (lambda (out) (display (file->string (build-path src-dir "index.js")) out)))]
+       [else
+        (response/output #:code 200 #:mime-type #"text/html"
+                         #:headers cors-headers
+                         (lambda (out) (display (file->string (build-path src-dir "index.html")) out)))])]))
 
