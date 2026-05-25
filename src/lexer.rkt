@@ -51,18 +51,18 @@
       '(  
           ; Reserved words
           ("rw-automata" #rx"Automaton")
-          ("rw-start" #rx"^start")
-          ("rw-end" #rx"^end")
-          ("rw-states" #rx"^states")
-          ("rw-transitions" #rx"^transitions")
-          ("rw-alphabet" #rx"^alphabet")
+          ("rw-start" #rx"^start:")
+          ("rw-end" #rx"^end:")
+          ("rw-states" #rx"^states:")
+          ("rw-transitions" #rx"^transitions:")
+          ("rw-alphabet" #rx"^alphabet:")
           ; Identifiers
           ("stateId" #rx"^q[0-9]+"  )
           ("identifier" #rx"^[a-zA-Z_][a-zA-Z0-9_]*")
           ("alphabet-symbol" #rx"^[a-zA-Z0-9]")
           ; Writing Symbols
-          ("right-straigth-parenthesis" #rx"^\\[")
-          ("left-straigth-parenthesis" #rx"^\\]")
+          ("left-straigth-parenthesis" #rx"^\\[")
+          ("right-straigth-parenthesis" #rx"^\\]")
           ("newline" #rx"^\n")
           ("lower-line" #rx"^_")
           ("dots"    #rx"^:")
