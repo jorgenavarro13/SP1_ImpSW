@@ -23,6 +23,7 @@
 
         textarea::placeholder { color: #3e3d32; }
         textarea:focus { outline: none; }
+        textarea.has-error { border-color: #f92672 !important; }
     </style>
 </head>
 
@@ -66,9 +67,22 @@
             Processing...
         </div>
 
-        <!-- Error -->
+        <!-- Network / server error -->
         <div id="error-box" class="hidden rounded p-4 text-sm"
             style="background:#1e1f1c; border:1px solid #f92672; color:#f92672;"></div>
+
+        <!-- Parser / semantic errors (shown for both Run and Simulate) -->
+        <div id="syntax-errors" class="hidden rounded overflow-hidden"
+             style="border:1px solid #f92672;">
+            <div class="flex items-center gap-2 px-4 py-2"
+                 style="background:#1a1b18; border-bottom:1px solid #f92672;">
+                <span class="w-2.5 h-2.5 rounded-full" style="background:#f92672;"></span>
+                <span class="text-xs uppercase tracking-widest font-bold" style="color:#f92672;">Errors</span>
+            </div>
+            <ol id="syntax-error-list"
+                class="p-4 text-sm space-y-1 list-decimal list-inside"
+                style="background:#1e1f1c; color:#f92672; font-family:monospace;"></ol>
+        </div>
 
         <!-- Results (hidden until first run) -->
         <section id="results" class="hidden">
@@ -121,12 +135,6 @@
                     <div id="sim-result" class="mt-3 text-sm hidden">
                         <span id="sim-verdict" class="font-bold"></span>
                         <span id="sim-path" class="ml-3" style="color:#75715e;"></span>
-                    </div>
-                    <div id="syntax-errors" class="hidden mt-3 rounded p-3" style="background:#272822; border:1px solid #f92672;">
-                        <div class="flex items-center gap-2 mb-2">
-                            <span class="text-xs uppercase tracking-widest font-bold" style="color:#f92672;">Syntax Errors</span>
-                        </div>
-                        <ol id="syntax-error-list" class="text-sm space-y-1 list-decimal list-inside" style="color:#f92672; font-family:monospace;"></ol>
                     </div>
                 </div>
             </div>

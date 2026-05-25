@@ -39,35 +39,43 @@
           (define definition (hash-ref data 'definition))
           (define input (hash-ref data 'input))
 
-          (define result (Tokenizer definition))
-          (define flat-tokens (first result))
-          (define recursive-descent (Recursive-descent flat-tokens))
-          (define success (first recursive-descent))
-          (define recursive-result (second recursive-descent))
+          (define flat-tokens   (first (Tokenizer definition)))
+          (define parse-result  (Recursive-descent flat-tokens))
+          (define success       (first  parse-result))
+          (define result-value  (second parse-result))
           (cond
             [(not success)
              (response/output #:code 400 #:mime-type #"application/json"
                               #:headers cors-headers
                               (lambda (out)
-                                (write-json (hash 'error "syntax error in automaton definition") out) ))]
+                                (write-json (hash 'errors result-value) out)))]
             [else
-             ; Simulation — normalize to boolean so JSON serializes as true/false
-             (define accepted? (if (simulate recursive-result input) #t #f))
+             (define accepted? (if (simulate result-value input) #t #f))
              (response/output #:code 200 #:mime-type #"application/json"
                               #:headers cors-headers
                               (lambda (out)
                                 (write-json (hash 'accepted accepted?) out)))])
         ]
-        [else 
-        (let* ([data      (bytes->jsexpr (request-post-data/raw request))]
-          [input-str (hash-ref data 'input)]
-          [json-hash
-          (hash 'result (tokenize-to-html input-str)
-                'image  (genera-img input-str))])
-
-          (response/output #:code 200 #:mime-type #"application/json"
-            #:headers cors-headers
-            (lambda (out) (write-json json-hash out))))
+        [else
+          (define data      (bytes->jsexpr (request-post-data/raw request)))
+          (define input-str (hash-ref data 'input))
+          (define flat-tokens  (first (Tokenizer input-str)))
+          (define parse-result (Recursive-descent flat-tokens))
+          (define success      (first  parse-result))
+          (define result-value (second parse-result))
+          (cond
+            [(not success)
+             (response/output #:code 400 #:mime-type #"application/json"
+                              #:headers cors-headers
+                              (lambda (out)
+                                (write-json (hash 'errors result-value) out)))]
+            [else
+             (response/output #:code 200 #:mime-type #"application/json"
+                              #:headers cors-headers
+                              (lambda (out)
+                                (write-json (hash 'result (tokenize-to-html input-str)
+                                                  'image  (genera-img input-str))
+                                            out)))])
         ]
       )
     ]

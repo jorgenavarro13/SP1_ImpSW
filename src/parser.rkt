@@ -1,4 +1,5 @@
 #lang racket
+(require racket/set)
 
 (provide Recursive-descent
          strip-spaces)
@@ -311,14 +312,47 @@
   )
 )
 
+; Semantic validation: every state/symbol referenced must be declared
+(define (validate-automaton auto)
+  (define states-set  (list->set (hash-ref auto 'states  '())))
+  (define alpha-set   (list->set (hash-ref auto 'alphabet '())))
+  (define start       (hash-ref auto 'start ""))
+  (define end-list    (hash-ref auto 'end   '()))
+  (define transitions (hash-ref auto 'transitions (hash)))
+
+  (define e1
+    (if (and (not (equal? start "")) (not (set-member? states-set start)))
+        (list (string-append "Start state '" start "' is not declared"))
+        '()))
+
+  (define e2
+    (foldl (lambda (s acc)
+             (if (set-member? states-set s) acc
+                 (append acc (list (string-append "End state '" s "' is not declared")))))
+           e1 end-list))
+
+  (for/fold ([acc e2])
+            ([(from from-map) (in-hash transitions)])
+    (define acc1
+      (if (set-member? states-set from) acc
+          (append acc (list (string-append "Transition: origin '" from "' is not a declared state")))))
+    (for/fold ([acc2 acc1])
+              ([(sym to) (in-hash from-map)])
+      (define acc3
+        (if (set-member? alpha-set sym) acc2
+            (append acc2 (list (string-append "Transition: symbol '" sym "' is not in the alphabet")))))
+      (if (set-member? states-set to) acc3
+          (append acc3 (list (string-append "Transition: destination '" to "' is not a declared state")))))))
+
 ; Recursive descent entry point
 (define (Recursive-descent token-stream)
-  (define result (syntax-automaton (strip-spaces token-stream) (hash) '()))
-  (define errors (result-errors result))
-  (define auto   (result-auto result))
-  (cond
-    [(null? errors) (list #t auto)]
-    [else
-      (list #f errors)
-    ])
+  (define result        (syntax-automaton (strip-spaces token-stream) (hash) '()))
+  (define syntax-errors (result-errors result))
+  (define auto          (result-auto result))
+  (if (null? syntax-errors)
+      (let ([semantic-errors (validate-automaton auto)])
+        (if (null? semantic-errors)
+            (list #t auto)
+            (list #f semantic-errors)))
+      (list #f syntax-errors))
 )

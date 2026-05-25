@@ -1,11 +1,55 @@
+// ── Shared helpers ────────────────────────────────────────────────────────────
+
+function clearErrors() {
+    document.getElementById("syntax-errors").classList.add("hidden");
+    document.getElementById("error-box").classList.add("hidden");
+    document.getElementById("textbox").classList.remove("has-error");
+}
+
+// Render the error list and try to select the first problematic term in the textarea.
+// Semantic error messages embed the offending identifier in single-quotes: 'q99'
+function showErrors(errors) {
+    const panel = document.getElementById("syntax-errors");
+    const list  = document.getElementById("syntax-error-list");
+    list.innerHTML = errors.map(e => `<li>${e}</li>`).join("");
+    panel.classList.remove("hidden");
+    document.getElementById("textbox").classList.add("has-error");
+    highlightFirstError(errors);
+}
+
+function highlightFirstError(errors) {
+    const textarea = document.getElementById("textbox");
+    const text = textarea.value;
+
+    for (const msg of errors) {
+        // Extract the first single-quoted term from the message, e.g. 'q99'
+        const match = msg.match(/'([^']+)'/);
+        if (!match) continue;
+
+        const term = match[1];
+        const idx  = text.indexOf(term);
+        if (idx === -1) continue;
+
+        textarea.focus();
+        textarea.setSelectionRange(idx, idx + term.length);
+
+        // Scroll the textarea so the selection is visible
+        const linesBefore = text.substring(0, idx).split("\n").length - 1;
+        const lineHeight  = parseInt(getComputedStyle(textarea).lineHeight) || 20;
+        textarea.scrollTop = Math.max(0, (linesBefore - 2)) * lineHeight;
+        return;
+    }
+}
+
+// ── Run (tokenise + validate) ─────────────────────────────────────────────────
+
 async function run() {
     const text    = document.getElementById("textbox").value.trim();
     const btn     = document.getElementById("run-btn");
     const loading = document.getElementById("loading");
-    const errBox  = document.getElementById("error-box");
     const results = document.getElementById("results");
 
-    errBox.classList.add("hidden");
+    clearErrors();
     results.classList.add("hidden");
     loading.classList.remove("hidden");
     btn.disabled = true;
@@ -18,15 +62,19 @@ async function run() {
             body: JSON.stringify({ input: text })
         });
 
-        if (!response.ok) throw new Error("Server error: " + response.status);
-
         const data = await response.json();
+
+        if (!response.ok) {
+            showErrors(data.errors || ["Server error: " + response.status]);
+            return;
+        }
 
         document.getElementById("token-output").innerHTML = data.result;
         document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
         results.classList.remove("hidden");
 
     } catch (err) {
+        const errBox = document.getElementById("error-box");
         errBox.textContent = err.message;
         errBox.classList.remove("hidden");
     } finally {
@@ -36,20 +84,20 @@ async function run() {
     }
 }
 
+// ── Simulate ──────────────────────────────────────────────────────────────────
+
 async function simulate() {
-    const definition   = document.getElementById("textbox").value.trim();
-    const simInput     = document.getElementById("sim-input").value;
-    const btn          = document.getElementById("sim-btn");
-    const resultDiv    = document.getElementById("sim-result");
-    const verdict      = document.getElementById("sim-verdict");
-    const path         = document.getElementById("sim-path");
-    const syntaxErrors = document.getElementById("syntax-errors");
-    const errorList    = document.getElementById("syntax-error-list");
+    const definition = document.getElementById("textbox").value.trim();
+    const simInput   = document.getElementById("sim-input").value;
+    const btn        = document.getElementById("sim-btn");
+    const resultDiv  = document.getElementById("sim-result");
+    const verdict    = document.getElementById("sim-verdict");
+    const path       = document.getElementById("sim-path");
 
     btn.disabled = true;
     btn.style.opacity = "0.5";
     resultDiv.classList.add("hidden");
-    syntaxErrors.classList.add("hidden");
+    clearErrors();
 
     try {
         const response = await fetch("/simulate", {
@@ -58,18 +106,12 @@ async function simulate() {
             body: JSON.stringify({ definition, input: simInput })
         });
 
-        if (response.status === 400) {
-            const data = await response.json();
-            errorList.innerHTML = (data.errors || ["Unknown syntax error"])
-                .map(e => `<li>${e}</li>`)
-                .join("");
-            syntaxErrors.classList.remove("hidden");
+        const data = await response.json();
+
+        if (!response.ok) {
+            showErrors(data.errors || ["Server error: " + response.status]);
             return;
         }
-
-        if (!response.ok) throw new Error("Server error: " + response.status);
-
-        const data = await response.json();
 
         if (data.accepted) {
             verdict.textContent = "ACCEPTED";
@@ -84,7 +126,7 @@ async function simulate() {
     } catch (err) {
         verdict.textContent = err.message;
         verdict.style.color = "#f92672";
-        path.textContent = "";
+        path.textContent    = "";
         resultDiv.classList.remove("hidden");
     } finally {
         btn.disabled = false;
