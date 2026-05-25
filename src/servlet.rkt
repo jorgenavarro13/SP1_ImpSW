@@ -74,7 +74,7 @@
                               #:headers cors-headers
                               (lambda (out)
                                 (write-json (hash 'result (tokenize-to-html input-str)
-                                                  'image  (genera-img input-str))
+                                                  'image  (genera-img result-value))
                                             out)))])
         ]
       )
