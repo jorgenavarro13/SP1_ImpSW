@@ -6,7 +6,7 @@
             start
             #:launch-browser? #f
             #:listen-ip #f
-            #:servlet-path "/"
+            #:servlet-regexp #rx""
             #:port (let ([p (getenv "PORT")]) (if p (string->number p) 8000))
 )
 

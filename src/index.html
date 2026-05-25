@@ -56,7 +56,7 @@
                 alphabet :[a, b]&#10;
                 start :q0&#10;
                 end :q2&#10;
-                transitions :[q0:a::q1, q1:b::q2]&#10;
+                transitions :[q0::a::q1, q1::b::q2]&#10;
                 ]">
             </textarea>
         </section>
@@ -99,49 +99,37 @@
                 </div>
 
             </div>
+
+            <!-- Simulator panel -->
+            <div class="mt-6 rounded overflow-hidden" style="border:1px solid #3e3d32;">
+                <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
+                    <span class="w-2.5 h-2.5 rounded-full" style="background:#e6db74;"></span>
+                    <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Simulator</span>
+                </div>
+                <div class="p-4" style="background:#1e1f1c;">
+                    <div class="flex gap-3 items-center">
+                        <input id="sim-input" type="text"
+                            class="flex-1 rounded px-4 py-2 text-sm"
+                            style="background:#272822; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace; outline:none;"
+                            placeholder="Enter a string to simulate, e.g. ab" />
+                        <button id="sim-btn" onclick="simulate()"
+                            class="px-5 py-2 rounded text-sm font-bold transition-opacity"
+                            style="background:#e6db74; color:#272822;">
+                            &#9654; Simulate
+                        </button>
+                    </div>
+                    <div id="sim-result" class="mt-3 text-sm hidden">
+                        <span id="sim-verdict" class="font-bold"></span>
+                        <span id="sim-path" class="ml-3" style="color:#75715e;"></span>
+                    </div>
+                </div>
+            </div>
+
         </section>
 
     </main>
 
-    <script>
-        async function run() {
-            const text    = document.getElementById("textbox").value.trim();
-            const btn     = document.getElementById("run-btn");
-            const loading = document.getElementById("loading");
-            const errBox  = document.getElementById("error-box");
-            const results = document.getElementById("results");
-
-            errBox.classList.add("hidden");
-            results.classList.add("hidden");
-            loading.classList.remove("hidden");
-            btn.disabled = true;
-            btn.style.opacity = "0.5";
-
-            try {
-                const response = await fetch("/", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ input: text })
-                });
-
-                if (!response.ok) throw new Error("Server error: " + response.status);
-
-                const data = await response.json();
-
-                document.getElementById("token-output").innerHTML = data.result;
-                document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
-                results.classList.remove("hidden");
-
-            } catch (err) {
-                errBox.textContent = err.message;
-                errBox.classList.remove("hidden");
-            } finally {
-                loading.classList.add("hidden");
-                btn.disabled = false;
-                btn.style.opacity = "1";
-            }
-        }
-    </script>
+    <script src="index.js"></script>
 
 </body>
 </html>
