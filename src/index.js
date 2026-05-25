@@ -55,7 +55,7 @@ async function run(id) {
         const response = await fetch("/", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ input: text })
+            body: JSON.stringify({ input: text, mode: id })
         });
 
         const data = await response.json();
@@ -99,7 +99,7 @@ async function simulate(id) {
         const response = await fetch("/simulate", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ definition, input: simInput })
+            body: JSON.stringify({ definition, input: simInput, mode: id })
         });
 
         const data = await response.json();
