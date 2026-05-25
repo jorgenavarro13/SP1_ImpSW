@@ -211,10 +211,35 @@
             (not (member (tok-label t) '("blank_space" "newline"))))
           token-stream))
 
+; Semantic validation: checks that every state/symbol reference exists in the declared sets.
+(define (validate-automaton automaton)
+  (define states-set (list->set (cdr (assoc 'states      automaton))))
+  (define alpha-set  (list->set (cdr (assoc 'alphabet    automaton))))
+  (define start      (cdr       (assoc 'start       automaton)))
+  (define end        (cdr       (assoc 'end         automaton)))
+
+  (unless (set-member? states-set start)
+    (error (format "'~a' is not a declared state" start)))
+
+  (unless (set-member? states-set end)
+    (error (format "'~a' is not a declared state" end)))
+
+  (for ([t (cdr (assoc 'transitions automaton))])
+    (define from (first  t))
+    (define sym  (second t))
+    (define to   (third  t))
+    (unless (set-member? states-set from)
+      (error (format "'~a' is not a declared state" from)))
+    (unless (set-member? alpha-set sym)
+      (error (format "'~a' is not a declared alphabet symbol" sym)))
+    (unless (set-member? states-set to)
+      (error (format "'~a' is not a declared state" to)))))
+
 ; Public — takes raw token stream, returns automaton alist.
 ; This is what servlet.rkt calls directly.
 (define (parse-tokens token-stream)
   (define-values (automaton _) (parse-program (filter-whitespace token-stream)))
+  (validate-automaton automaton)
   automaton)
 
 ; Public — like parse-tokens but wraps errors; returns (list automaton-alist errors-list).
