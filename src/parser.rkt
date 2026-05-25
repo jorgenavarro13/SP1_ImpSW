@@ -1,4 +1,8 @@
 #lang racket
+
+(provide Recursive-descent
+         strip-spaces)
+
 ; Parser: converts a flat token list into an automaton data structure
 (define (strip-spaces raw-tokens)
   (filter
@@ -153,7 +157,48 @@
   )
 )
 
-; endDefinition ::= rw-end dots stateId
+; endPrime ::= , stateId endPrime | ]
+(define (syntax-endPrime tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "coma")
+     (define next-token (token-type (cadr tokens)))
+     (cond
+       [(equal? next-token "stateId")
+        (define lexem (token-lexeme (cadr tokens)))
+        (define new-end (append (hash-ref auto 'end '()) (list lexem)))
+        (define new-auto (hash-set auto 'end new-end))
+        (syntax-endPrime (cddr tokens) new-auto errors)]
+       [else (make-result tokens auto (add-error errors "stateId" next-token))])]
+    [(equal? current-token "left-straigth-parenthesis")
+     (make-result (cdr tokens) auto errors)]
+    [else (make-result tokens auto (add-error errors ", or ]" current-token))]
+  )
+)
+
+; endStates ::= stateId endPrime
+(define (syntax-endStates tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "stateId")
+     (define lexem (token-lexeme (car tokens)))
+     (define new-auto (hash-set auto 'end (list lexem)))
+     (syntax-endPrime (cdr tokens) new-auto errors)]
+    [else (make-result tokens auto (add-error errors "stateId" current-token))]
+  )
+)
+
+; endList ::= [ endStates
+(define (syntax-endList tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "right-straigth-parenthesis")
+     (syntax-endStates (cdr tokens) auto errors)]
+    [else (make-result tokens auto (add-error errors "[" current-token))]
+  )
+)
+
+; endDefinition ::= rw-end dots endList
 (define (syntax-endDefinition tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
@@ -161,13 +206,7 @@
      (define next-token (token-type (cadr tokens)))
      (cond
        [(equal? next-token "dots")
-        (define state-token (token-type (caddr tokens)))
-        (cond
-          [(equal? state-token "stateId")
-           (define lexem (token-lexeme (caddr tokens)))
-           (define new-auto (hash-set auto 'end lexem))
-           (make-result (cdddr tokens) new-auto errors)]
-          [else (make-result tokens auto (add-error errors "stateId" state-token))])]
+        (syntax-endList (cddr tokens) auto errors)]
        [else (make-result tokens auto (add-error errors ":" next-token))])]
     [else (make-result tokens auto (add-error errors "end" current-token))]
   )
@@ -273,20 +312,13 @@
 )
 
 ; Recursive descent entry point
-(define (Recursive-descent stripped-tokens)
-  (define result   (syntax-automaton stripped-tokens (hash) '()))
-  (define errors   (result-errors result))
-  (define auto     (result-auto   result))
+(define (Recursive-descent token-stream)
+  (define result (syntax-automaton (strip-spaces token-stream) (hash) '()))
+  (define errors (result-errors result))
+  (define auto   (result-auto result))
   (cond
-    [(null? errors)
-     (displayln "Parsing successful!")
-     (displayln "Automaton:")
-     (displayln auto)
-     (displayln "Transitions:")
-     (displayln (hash-ref auto 'transitions (hash)))]
+    [(null? errors) (list #t auto)]
     [else
-     (displayln "Parsing failed with errors:")
-     (for-each displayln errors)])
+      (list #f errors)
+    ])
 )
-
-;(Recursive-descent (strip-spaces raw-tokens))
