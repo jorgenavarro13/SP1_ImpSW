@@ -165,15 +165,3 @@
        (print-aux (cdr stream))]))
 
   (print-aux token-stream))
-
-(print-token-stream (car(Tokenizer "Automaton dfa [
-  states :[ q0, q1, q2 ]
-  alphabet: [ a, b, 0 ]
-  start: q0
-  end: q2
-  transitions :[ 
-    q0 :: a :: q1,
-    q1 :: b :: q2,
-    q2 :: 0 :: q0
-  ]
-]")))
