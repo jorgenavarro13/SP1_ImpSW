@@ -9,7 +9,7 @@
 ; Grammar (whitespace and newlines are stripped before parsing):
 ;
 ;   program         → rw-automata identifier '[' sections ']'
-;   sections        → section*
+;   sections        → states-sec -> alphabet-sec -> start-sec -> end-sec -> transitions-sec
 ;   section         → states-sec | alphabet-sec | start-sec
 ;                   | end-sec   | transitions-sec
 ;   states-sec      → rw-states      '[' state-list      ']'
@@ -45,20 +45,81 @@
   )
 )
 
-(define (parse-program tokens)
-  (define-values (_ tokens) (expect 'rw-automata tokens))
-  (define-values (name tokens) (expect 'identifier tokens))
-  (define-values (_ tokens) (expect 'right-straigth-parenthesis tokens))
-  (parse-sections tokens)
-  (define-values (_ tokens) (expect 'left-straigth-parenthesis tokens))
+(define (states-sec tokens)
+  (let*-values
+    (
+      [(_ tokens) (expect "rw-states" tokens)]
+      [(_ tokens) (expect "left-straigth-parenthesis" tokens)]
+      [(s-list tokens) (parse-state-list tokens)]
+      [(_ tokens) (expect "right-straigth-parenthesis" tokens)]
+    )
+    (values s-list tokens)
+  )
 )
 
-(define (parse-tokens raw-tokens)
- 
-  (list
-    (cons 'name        name)
-    (cons 'states      (find 'states      '()))
-    (cons 'start       (find 'start       #f))
-    (cons 'end         (find 'end         #f))
-    (cons 'alphabet    (find 'alphabet    '()))
-    (cons 'transitions (find 'transitions '()))))
+(define (alphabet-sec tokens)
+  (let*-values
+    (
+      [(_ tokens) (expect "rw-alphabet" tokens)]
+      [(_ tokens) (expect "left-straigth-parenthesis" tokens)]
+      [(sym-list tokens) (parse-symbol-list tokens)]
+      [(_ tokens) (expect "right-straigth-parenthesis" tokens)]
+    )
+    (values sym-list tokens)
+  )
+)
+
+(define (start-sec tokens)
+  (let*-values
+    (
+      [(_ tokens) (expect "rw-start" tokens)]
+      [(state-id tokens) (expect "identifier" tokens)]
+    )
+    (values state-id tokens)
+  )
+)
+
+(define (end-sec tokens)
+  (let*-values
+    (
+      [(_ tokens) (expect "rw-end" tokens)]
+      [(state-id tokens) (expect "identifier" tokens)]
+    )
+    (values state-id tokens)
+  )
+)
+
+(define (parse-sections tokens)
+  (let*-values
+    (
+      [(states tokens) (states-sec tokens)]
+      [(alphabet tokens) (alphabet-sec tokens)]
+      [(start tokens) (start-sec tokens)]
+      [(end tokens) (end-sec tokens)]
+      [(transitions tokens) (transitions-sec tokens)]
+    )
+    (define sections-alist
+      (list
+        (cons 'states states)
+        (cons 'alphabet alphabet)
+        (cons 'start start)
+        (cons 'end end)
+        (cons 'transitions transitions)))
+    (values sections-alist tokens)
+  )
+)
+
+(define (parse-tokens tokens)
+  (let*-values
+    (
+      [(_ tokens) (expect "rw-automata" tokens)]
+      [(name tokens) (expect "identifier" tokens)]
+      [(_ tokens) (expect "left-straigth-parenthesis" tokens)]
+      [(sections tokens) (parse-sections tokens)]
+      [(_ tokens) (expect "right-straigth-parenthesis" tokens)]
+    )
+    (define program-alist
+      (cons (cons 'name name) sections))
+    (values program-alist '())
+  )
+)
