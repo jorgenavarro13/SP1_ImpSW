@@ -39,8 +39,9 @@
           (define definition (hash-ref data 'definition))
           (define input (hash-ref data 'input))
 
+          (define mode          (hash-ref data 'mode ""))
           (define flat-tokens   (first (Tokenizer definition)))
-          (define parse-result  (Recursive-descent flat-tokens))
+          (define parse-result  (Recursive-descent flat-tokens mode))
           (define success       (first  parse-result))
           (define result-value  (second parse-result))
           (cond
@@ -59,8 +60,9 @@
         [else
           (define data      (bytes->jsexpr (request-post-data/raw request)))
           (define input-str (hash-ref data 'input))
+          (define mode      (hash-ref data 'mode ""))
           (define flat-tokens  (first (Tokenizer input-str)))
-          (define parse-result (Recursive-descent flat-tokens))
+          (define parse-result (Recursive-descent flat-tokens mode))
           (define success      (first  parse-result))
           (define result-value (second parse-result))
           (cond

@@ -6,8 +6,6 @@ function clearErrors() {
     document.getElementById("textbox").classList.remove("has-error");
 }
 
-// Render the error list and try to select the first problematic term in the textarea.
-// Semantic error messages embed the offending identifier in single-quotes: 'q99'
 function showErrors(errors) {
     const panel = document.getElementById("syntax-errors");
     const list  = document.getElementById("syntax-error-list");
@@ -22,7 +20,6 @@ function highlightFirstError(errors) {
     const text = textarea.value;
 
     for (const msg of errors) {
-        // Extract the first single-quoted term from the message, e.g. 'q99'
         const match = msg.match(/'([^']+)'/);
         if (!match) continue;
 
@@ -33,7 +30,6 @@ function highlightFirstError(errors) {
         textarea.focus();
         textarea.setSelectionRange(idx, idx + term.length);
 
-        // Scroll the textarea so the selection is visible
         const linesBefore = text.substring(0, idx).split("\n").length - 1;
         const lineHeight  = parseInt(getComputedStyle(textarea).lineHeight) || 20;
         textarea.scrollTop = Math.max(0, (linesBefore - 2)) * lineHeight;
@@ -57,9 +53,9 @@ async function run() {
 
     try {
         const response = await fetch("/", {
-            method: "POST",
+            method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ input: text })
+            body:    JSON.stringify({ input: text, mode: "" })
         });
 
         const data = await response.json();
@@ -101,9 +97,9 @@ async function simulate() {
 
     try {
         const response = await fetch("/simulate", {
-            method: "POST",
+            method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ definition, input: simInput })
+            body:    JSON.stringify({ definition, input: simInput, mode: "" })
         });
 
         const data = await response.json();

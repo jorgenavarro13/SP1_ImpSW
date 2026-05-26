@@ -245,10 +245,13 @@
         (define from  (token-lexeme (list-ref tokens 0)))
         (define alpha (token-lexeme (list-ref tokens 2)))
         (define to    (token-lexeme (list-ref tokens 4)))
-        (define old-tr   (hash-ref auto 'transitions (hash)))
-        (define from-map (hash-ref old-tr from (hash)))
-        (define new-auto (hash-set auto 'transitions
-                                   (hash-set old-tr from (hash-set from-map alpha to))))
+        (define old-tr    (hash-ref auto 'transitions (hash)))
+        (define from-map  (hash-ref old-tr from (hash)))
+        (define old-dests (hash-ref from-map alpha '()))
+        (define new-auto  (hash-set auto 'transitions
+                                    (hash-set old-tr from
+                                              (hash-set from-map alpha
+                                                        (append old-dests (list to))))))
         (syntax-transitionsPrime (list-tail tokens 5) new-auto errors)]
        [else (make-result tokens auto (add-error errors "stateId :: alpha :: stateId" from-type))])]
   )
@@ -313,12 +316,13 @@
 )
 
 ; Semantic validation: every state/symbol referenced must be declared
-(define (validate-automaton auto)
+(define (validate-automaton auto mode)
   (define states-set  (list->set (hash-ref auto 'states  '())))
   (define alpha-set   (list->set (hash-ref auto 'alphabet '())))
   (define start       (hash-ref auto 'start ""))
   (define end-list    (hash-ref auto 'end   '()))
   (define transitions (hash-ref auto 'transitions (hash)))
+  (define is-dfa      (equal? mode "dfa"))
 
   (define e1
     (if (and (not (equal? start "")) (not (set-member? states-set start)))
@@ -337,20 +341,28 @@
       (if (set-member? states-set from) acc
           (append acc (list (string-append "Transition: origin '" from "' is not a declared state")))))
     (for/fold ([acc2 acc1])
-              ([(sym to) (in-hash from-map)])
+              ([(sym to-list) (in-hash from-map)])
       (define acc3
         (if (set-member? alpha-set sym) acc2
             (append acc2 (list (string-append "Transition: symbol '" sym "' is not in the alphabet")))))
-      (if (set-member? states-set to) acc3
-          (append acc3 (list (string-append "Transition: destination '" to "' is not a declared state")))))))
+      (define acc4
+        (if (and is-dfa (> (length to-list) 1))
+            (append acc3 (list (string-append "DFA Error: state '" from
+                                             "' has multiple transitions on symbol '" sym
+                                             "' (non-deterministic)")))
+            acc3))
+      (foldl (lambda (to acc)
+               (if (set-member? states-set to) acc
+                   (append acc (list (string-append "Transition: destination '" to "' is not a declared state")))))
+             acc4 to-list))))
 
 ; Recursive descent entry point
-(define (Recursive-descent token-stream)
+(define (Recursive-descent token-stream [mode ""])
   (define result        (syntax-automaton (strip-spaces token-stream) (hash) '()))
   (define syntax-errors (result-errors result))
   (define auto          (result-auto result))
   (if (null? syntax-errors)
-      (let ([semantic-errors (validate-automaton auto)])
+      (let ([semantic-errors (validate-automaton auto mode)])
         (if (null? semantic-errors)
             (list #t auto)
             (list #f semantic-errors)))

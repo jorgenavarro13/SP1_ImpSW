@@ -7,8 +7,6 @@
 (provide generate-img)
 
 (define-runtime-path here ".")
-(current-directory here)
-(displayln (format "DIR: ~a" (current-directory)))
 
 ; Groups transitions by (from . to) pair so multiple symbols share one edge.
 ; Returns an immutable hash: (from . to) -> (list sym ...)
@@ -29,13 +27,15 @@
   (define end        (hash-ref automaton 'end))
   (define trans-hash (hash-ref automaton 'transitions))
 
-  ; Flatten nested hash (from -> (sym -> to)) into list of (from sym to) triples
+  ; Flatten nested hash (from -> (sym -> (list to ...))) into (from sym to) triples
   (define transitions
     (apply append
       (hash-map trans-hash
         (lambda (from sym-hash)
-          (hash-map sym-hash
-            (lambda (sym to) (list from sym to)))))))
+          (apply append
+            (hash-map sym-hash
+              (lambda (sym to-list)
+                (map (lambda (to) (list from sym to)) to-list))))))))
 
   (define state-lines
     (map (lambda (s)
