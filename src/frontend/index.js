@@ -71,6 +71,17 @@ async function run() {
 
         document.getElementById("token-output").innerHTML = data.result;
         document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
+
+        const mode = (data.mode || "dfa").toLowerCase();
+        const modeLabels   = { dfa: "DFA GRAPH", nfa: "NFA GRAPH", pda: "PDA GRAPH" };
+        const badgeClasses = { dfa: "badge-dfa",  nfa: "badge-nfa",  pda: "badge-pda"  };
+        const labelEl = document.getElementById("graph-panel-label");
+        const badge   = document.getElementById("mode-badge");
+        labelEl.textContent = modeLabels[mode] || "AUTOMATON GRAPH";
+        badge.textContent   = mode.toUpperCase();
+        badge.className     = `text-xs font-bold px-2 py-0.5 rounded ${badgeClasses[mode] || ""}`;
+        badge.classList.remove("hidden");
+
         results.classList.remove("hidden");
 
     } catch (err) {
