@@ -15,7 +15,7 @@
 (define-runtime-path src-dir ".")
 
 (define cors-headers
-  (list (make-header #"Access-Control-Allow-Origin"  #"*")
+  (list (make-header #"Access-Control-Allow-Origin" #"*")
         (make-header #"Access-Control-Allow-Methods" #"GET, POST, OPTIONS")
         (make-header #"Access-Control-Allow-Headers" #"Content-Type")))
 
@@ -30,60 +30,60 @@
                       (lambda (out) (void)))]
 
     [(equal? method #"POST")
-      (define endpoint (url->string (request-uri request)))
-      (cond 
-        [(equal? endpoint "/simulate")
-          (define body (bytes->string/utf-8 (request-post-data/raw request)))
-          ; Extract data
-          (define data (string->jsexpr body))
-          (define definition (hash-ref data 'definition))
-          (define input (hash-ref data 'input))
+     (define endpoint (url->string (request-uri request)))
+     (cond
+       [(equal? endpoint "/simulate")
+        (define body (bytes->string/utf-8 (request-post-data/raw request)))
+        ; Extract data
+        (define data (string->jsexpr body))
+        (define definition (hash-ref data 'definition))
+        (define input (hash-ref data 'input))
 
-          (define flat-tokens   (first (Tokenizer definition)))
-          (define parse-result  (Recursive-descent flat-tokens))
-          (define success       (first  parse-result))
-          (define result-value  (second parse-result))
-          (cond
-            [(not success)
-             (response/output #:code 400 #:mime-type #"application/json"
-                              #:headers cors-headers
-                              (lambda (out)
-                                (write-json (hash 'errors result-value) out)))]
-            [else
-             (define accepted? (if (simulate result-value input) #t #f))
-             (response/output #:code 200 #:mime-type #"application/json"
-                              #:headers cors-headers
-                              (lambda (out)
-                                (write-json (hash 'accepted accepted?) out)))])
+        (define flat-tokens (first (Tokenizer definition)))
+        (define parse-result (Recursive-descent flat-tokens))
+        (define success (first parse-result))
+        (define result-value (second parse-result))
+        (cond
+          [(not success)
+           (response/output #:code 400 #:mime-type #"application/json"
+                            #:headers cors-headers
+                            (lambda (out)
+                              (write-json (hash 'errors result-value) out)))]
+          [else
+           (define accepted? (if (simulate result-value input) #t #f))
+           (response/output #:code 200 #:mime-type #"application/json"
+                            #:headers cors-headers
+                            (lambda (out)
+                              (write-json (hash 'accepted accepted?) out)))])
         ]
-        [else
-          (define data      (bytes->jsexpr (request-post-data/raw request)))
-          (define input-str (hash-ref data 'input))
-          (define flat-tokens  (first (Tokenizer input-str)))
-          (define parse-result (Recursive-descent flat-tokens))
-          (define success      (first  parse-result))
-          (define result-value (second parse-result))
-          (cond
-            [(not success)
-             (response/output #:code 400 #:mime-type #"application/json"
-                              #:headers cors-headers
-                              (lambda (out)
-                                (write-json (hash 'errors result-value) out)))]
-            [else
-             (response/output #:code 200 #:mime-type #"application/json"
-                              #:headers cors-headers
-                              (lambda (out)
-                                (write-json (hash 'result (tokenize-to-html input-str)
-                                                  'image  (generate-img result-value))
-                                            out)))])
+       [else
+        (define data (bytes->jsexpr (request-post-data/raw request)))
+        (define input-str (hash-ref data 'input))
+        (define flat-tokens (first (Tokenizer input-str)))
+        (define parse-result (Recursive-descent flat-tokens))
+        (define success (first parse-result))
+        (define result-value (second parse-result))
+        (cond
+          [(not success)
+           (response/output #:code 400 #:mime-type #"application/json"
+                            #:headers cors-headers
+                            (lambda (out)
+                              (write-json (hash 'errors result-value) out)))]
+          [else
+           (response/output #:code 200 #:mime-type #"application/json"
+                            #:headers cors-headers
+                            (lambda (out)
+                              (write-json (hash 'result (tokenize-to-html input-str)
+                                                'image (generate-img result-value))
+                                          out)))])
         ]
-      )
-    ]
+       )
+     ]
 
     ; GET — serve static files or the main page
     [else
      (define path-parts (map path/param-path (url-path (request-uri request))))
-     (define last-seg   (if (null? path-parts) "" (last path-parts)))
+     (define last-seg (if (null? path-parts) "" (last path-parts)))
      (cond
        [(equal? last-seg "index.js")
         (response/output #:code 200 #:mime-type #"application/javascript"
