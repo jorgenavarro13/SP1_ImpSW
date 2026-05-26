@@ -29,7 +29,7 @@
         (list label lenMatch subStr)
         )
 
-      (list "none" 0 "")
+      (list "none" 0 "") ; No match, we return a default value with label "none", length 0 and empty string
       )
   )
 
@@ -73,7 +73,8 @@
     )
   )
 
-; consume characters until newline or eof
+; consume characters until newline or eof, useful for showing the complete 
+; line of an error, and discarding it for the next tokenization process
 (define (flush-line remaining current-line)
   (cond
     [(= (string-length remaining) 0)
@@ -99,7 +100,7 @@
   (define (tokenizer input current-line current-line-tokens token-stream)
 
     (cond
-      [(= (string-length input) 0)
+      [(= (string-length input) 0) ; Base cas, no more input to process
        (list
          (append token-stream current-line-tokens)
          #f)]
@@ -117,7 +118,7 @@
          (cond
 
            ; ERROR
-           [(equal? label "none")
+           [(equal? label "none") 
 
             ; discard current-line-tokens
             (list
@@ -147,8 +148,8 @@
 
   (tokenizer input "" '() '()))
 
-(define (print-token-stream token-stream)
-
+(define (print-token-stream token-stream) ; Helper function to print the token stream in a readable format and test it
+                                          ; Displayed in this mode for debbugging purposes
   (define (print-aux stream)
 
     (cond
