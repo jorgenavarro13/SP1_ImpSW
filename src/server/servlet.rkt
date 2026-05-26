@@ -9,9 +9,9 @@
 (require json)
 (require "graph.rkt")
 (require "html-gen.rkt")
-(require "lexer.rkt"
-         "parser.rkt"
-         "simulator.rkt")
+(require "../core/lexer.rkt"
+         "../core/parser.rkt"
+         "../core/simulator.rkt")
 (define-runtime-path src-dir ".")
 
 (define cors-headers
@@ -88,9 +88,9 @@
        [(equal? last-seg "index.js")
         (response/output #:code 200 #:mime-type #"application/javascript"
                          #:headers cors-headers
-                         (lambda (out) (display (file->string (build-path src-dir "index.js")) out)))]
+                         (lambda (out) (display (file->string (build-path src-dir "../frontend/index.js")) out)))]
        [else
         (response/output #:code 200 #:mime-type #"text/html"
                          #:headers cors-headers
-                         (lambda (out) (display (file->string (build-path src-dir "index.html")) out)))])]))
+                         (lambda (out) (display (file->string (build-path src-dir "../frontend/index.html")) out)))])]))
 

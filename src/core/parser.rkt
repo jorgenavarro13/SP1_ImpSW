@@ -282,32 +282,36 @@
     )
   )
 
-; automaton ::= (DFA | NFA) [ statesDefinition alphabetDefinition startDefinition endDefinition transitionsDefinition ]
+; automaton ::= (DFA | NFA) identifier [ statesDefinition alphabetDefinition startDefinition endDefinition transitionsDefinition ]
 (define (syntax-automaton tokens auto errors)
   (define kw-type (token-type (car tokens)))
   (cond
     [(or (equal? kw-type "rw-dfa") (equal? kw-type "rw-nfa"))
      (define mode (if (equal? kw-type "rw-dfa") "dfa" "nfa"))
-     (define bracket-type (token-type (cadr tokens)))
+     (define id-type (token-type (cadr tokens)))
      (cond
-       [(equal? bracket-type "right-straigth-parenthesis")
-        (define auto+mode (hash-set auto 'mode mode))
-        (define states-r (syntax-statesDefinition (cddr tokens) auto+mode errors))
-        (define alpha-r (syntax-alphabetDefinition (result-tokens states-r) (result-auto states-r) (result-errors states-r)))
-        (define start-r (syntax-startDefinition (result-tokens alpha-r) (result-auto alpha-r) (result-errors alpha-r)))
-        (define end-r (syntax-endDefinition (result-tokens start-r) (result-auto start-r) (result-errors start-r)))
-        (define trans-r (syntax-transitionsDefinition (result-tokens end-r) (result-auto end-r) (result-errors end-r)))
-        (define rem (result-tokens trans-r))
-        (define fin-auto (result-auto trans-r))
-        (define fin-errors (result-errors trans-r))
+       [(equal? id-type "identifier")
+        (define bracket-type (token-type (caddr tokens)))
         (cond
-          [(and (not (null? rem))
-                (equal? (token-type (car rem)) "left-straigth-parenthesis"))
-           (make-result (cdr rem) fin-auto fin-errors)]
-          [else
-           (define got (if (null? rem) "EOF" (token-type (car rem))))
-           (make-result rem fin-auto (add-error fin-errors "]" got))])]
-       [else (make-result tokens auto (add-error errors "[" bracket-type))])]
+          [(equal? bracket-type "right-straigth-parenthesis")
+           (define auto+mode (hash-set (hash-set auto 'mode mode) 'name (token-lexeme (cadr tokens))))
+           (define states-r (syntax-statesDefinition (cdddr tokens) auto+mode errors))
+           (define alpha-r (syntax-alphabetDefinition (result-tokens states-r) (result-auto states-r) (result-errors states-r)))
+           (define start-r (syntax-startDefinition (result-tokens alpha-r) (result-auto alpha-r) (result-errors alpha-r)))
+           (define end-r (syntax-endDefinition (result-tokens start-r) (result-auto start-r) (result-errors start-r)))
+           (define trans-r (syntax-transitionsDefinition (result-tokens end-r) (result-auto end-r) (result-errors end-r)))
+           (define rem (result-tokens trans-r))
+           (define fin-auto (result-auto trans-r))
+           (define fin-errors (result-errors trans-r))
+           (cond
+             [(and (not (null? rem))
+                   (equal? (token-type (car rem)) "left-straigth-parenthesis"))
+              (make-result (cdr rem) fin-auto fin-errors)]
+             [else
+              (define got (if (null? rem) "EOF" (token-type (car rem))))
+              (make-result rem fin-auto (add-error fin-errors "]" got))])]
+          [else (make-result tokens auto (add-error errors "[" bracket-type))])]
+       [else (make-result tokens auto (add-error errors "identifier" id-type))])]
     [else (make-result tokens auto (add-error errors "DFA or NFA" kw-type))]
     )
   )

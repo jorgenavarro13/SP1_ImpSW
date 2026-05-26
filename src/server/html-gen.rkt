@@ -2,7 +2,7 @@
 
 (provide tokenize-to-html)
 
-(require "lexer.rkt")
+(require "../core/lexer.rkt")
 
 ; Escape special HTML characters in a string
 (define (html-encode str)

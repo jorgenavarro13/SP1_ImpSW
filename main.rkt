@@ -1,6 +1,6 @@
 #lang racket
 (require web-server/servlet-env)
-(require "src/servlet.rkt")
+(require "src/server/servlet.rkt")
 
 (serve/servlet
   start
