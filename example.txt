@@ -1,8 +1,24 @@
-Automaton automatin [ states: [q0,q1,q2,q3]  
-    alphabet: [abcd123456789]  
-    start: q0  
-    end: q3  
-    transitions: [
-        q0::0::q1, q0::1::q2, q1::1::q3, q2::0::q3
-    ]  
-] 
+DFA myDFA [
+    states:      [q0, q1, q2]
+    alphabet:    [a, b]
+    start:       q0
+    end:         [q2]
+    transitions: [q0::a::q1, q1::b::q2]
+]
+
+NFA myNFA [
+    states:      [q0, q1, q2]
+    alphabet:    [a, b]
+    start:       q0
+    end:         [q2]
+    transitions: [q0::a::q1, q0::a::q2, q1::b::q2]
+]
+
+LBA myLBA [
+    states:        [q0, q1, q2, q3]
+    alphabet:      [a, b]
+    tape_alphabet: [a, b, A, B, $]
+    start:         q0
+    end:           [q3]
+    transitions:   [q0::a::q1::A::R, q1::b::q2::B::R, q2::$::q3::$::R]
+]

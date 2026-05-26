@@ -24,18 +24,27 @@
 
 ; Builds DOT source from the automaton hash.
 (define (generate-dot automaton)
+  (define mode (hash-ref automaton 'mode "dfa"))
   (define states (hash-ref automaton 'states))
   (define start (hash-ref automaton 'start))
   (define end (hash-ref automaton 'end))
   (define trans-hash (hash-ref automaton 'transitions))
 
-  ; Flatten nested hash (from -> (sym -> to)) into list of (from sym to) triples
+  ; Flatten nested hash into (from label to) triples.
+  ; DFA/NFA: label = read-sym string
+  ; LBA:     label = "read/write,dir" e.g. "a/A,R"
   (define transitions
     (apply append
            (hash-map trans-hash
                      (lambda (from sym-hash)
                        (hash-map sym-hash
-                                 (lambda (sym to) (list from sym to)))))))
+                                 (lambda (sym val)
+                                   (define label
+                                     (if (equal? mode "lba")
+                                         (string-append sym "/" (second val) "," (third val))
+                                         sym))
+                                   (define to (if (equal? mode "lba") (first val) val))
+                                   (list from label to)))))))
 
   (define state-lines
     (map (lambda (s)
@@ -53,7 +62,7 @@
 
   (string-join
     (append
-      (list "digraph DFA {"
+      (list (format "digraph ~a {" (string-upcase mode))
             "  rankdir=LR;"
             "  start [shape=plaintext label=\"\"];"
             (format "  start -> ~a;" start))

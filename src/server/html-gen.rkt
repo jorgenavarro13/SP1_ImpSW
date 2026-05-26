@@ -15,8 +15,10 @@
 ; Map token label to a CSS class
 (define (label->class label)
   (cond
-    [(member label '("rw-automata" "rw-start" "rw-end"
-                     "rw-states" "rw-transitions" "rw-alphabet")) "keyword"]
+    [(member label '("rw-dfa" "rw-nfa" "rw-lba"
+                     "rw-start" "rw-end"
+                     "rw-states" "rw-transitions"
+                     "rw-alphabet" "rw-tape-alphabet")) "keyword"]
     [(equal? label "stateId") "state-id"]
     [(equal? label "alphabet-symbol") "symbol-id"]
     [(equal? label "dots") "dos-puntos"]
