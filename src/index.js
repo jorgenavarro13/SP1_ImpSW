@@ -1,22 +1,22 @@
 // ── Shared helpers ────────────────────────────────────────────────────────────
 
-function clearErrors(id) {
-    document.getElementById(`syntax-errors-${id}`).classList.add("hidden");
-    document.getElementById(`error-box-${id}`).classList.add("hidden");
-    document.getElementById(`textbox-${id}`).classList.remove("has-error");
+function clearErrors() {
+    document.getElementById("syntax-errors").classList.add("hidden");
+    document.getElementById("error-box").classList.add("hidden");
+    document.getElementById("textbox").classList.remove("has-error");
 }
 
-function showErrors(errors, id) {
-    const panel = document.getElementById(`syntax-errors-${id}`);
-    const list  = document.getElementById(`syntax-error-list-${id}`);
+function showErrors(errors) {
+    const panel = document.getElementById("syntax-errors");
+    const list  = document.getElementById("syntax-error-list");
     list.innerHTML = errors.map(e => `<li>${e}</li>`).join("");
     panel.classList.remove("hidden");
-    document.getElementById(`textbox-${id}`).classList.add("has-error");
-    highlightFirstError(errors, id);
+    document.getElementById("textbox").classList.add("has-error");
+    highlightFirstError(errors);
 }
 
-function highlightFirstError(errors, id) {
-    const textarea = document.getElementById(`textbox-${id}`);
+function highlightFirstError(errors) {
+    const textarea = document.getElementById("textbox");
     const text = textarea.value;
 
     for (const msg of errors) {
@@ -39,13 +39,13 @@ function highlightFirstError(errors, id) {
 
 // ── Run (tokenise + validate) ─────────────────────────────────────────────────
 
-async function run(id) {
-    const text    = document.getElementById(`textbox-${id}`).value.trim();
-    const btn     = document.getElementById(`run-btn-${id}`);
-    const loading = document.getElementById(`loading-${id}`);
-    const results = document.getElementById(`results-${id}`);
+async function run() {
+    const text    = document.getElementById("textbox").value.trim();
+    const btn     = document.getElementById("run-btn");
+    const loading = document.getElementById("loading");
+    const results = document.getElementById("results");
 
-    clearErrors(id);
+    clearErrors();
     results.classList.add("hidden");
     loading.classList.remove("hidden");
     btn.disabled = true;
@@ -53,24 +53,24 @@ async function run(id) {
 
     try {
         const response = await fetch("/", {
-            method: "POST",
+            method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ input: text, mode: id })
+            body:    JSON.stringify({ input: text, mode: "" })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            showErrors(data.errors || ["Server error: " + response.status], id);
+            showErrors(data.errors || ["Server error: " + response.status]);
             return;
         }
 
-        document.getElementById(`token-output-${id}`).innerHTML = data.result;
-        document.getElementById(`graph-output-${id}`).src = "data:image/png;base64," + data.image;
+        document.getElementById("token-output").innerHTML = data.result;
+        document.getElementById("graph-output").src = "data:image/png;base64," + data.image;
         results.classList.remove("hidden");
 
     } catch (err) {
-        const errBox = document.getElementById(`error-box-${id}`);
+        const errBox = document.getElementById("error-box");
         errBox.textContent = err.message;
         errBox.classList.remove("hidden");
     } finally {
@@ -82,30 +82,30 @@ async function run(id) {
 
 // ── Simulate ──────────────────────────────────────────────────────────────────
 
-async function simulate(id) {
-    const definition = document.getElementById(`textbox-${id}`).value.trim();
-    const simInput   = document.getElementById(`sim-input-${id}`).value;
-    const btn        = document.getElementById(`sim-btn-${id}`);
-    const resultDiv  = document.getElementById(`sim-result-${id}`);
-    const verdict    = document.getElementById(`sim-verdict-${id}`);
-    const path       = document.getElementById(`sim-path-${id}`);
+async function simulate() {
+    const definition = document.getElementById("textbox").value.trim();
+    const simInput   = document.getElementById("sim-input").value;
+    const btn        = document.getElementById("sim-btn");
+    const resultDiv  = document.getElementById("sim-result");
+    const verdict    = document.getElementById("sim-verdict");
+    const path       = document.getElementById("sim-path");
 
     btn.disabled = true;
     btn.style.opacity = "0.5";
     resultDiv.classList.add("hidden");
-    clearErrors(id);
+    clearErrors();
 
     try {
         const response = await fetch("/simulate", {
-            method: "POST",
+            method:  "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ definition, input: simInput, mode: id })
+            body:    JSON.stringify({ definition, input: simInput, mode: "" })
         });
 
         const data = await response.json();
 
         if (!response.ok) {
-            showErrors(data.errors || ["Server error: " + response.status], id);
+            showErrors(data.errors || ["Server error: " + response.status]);
             return;
         }
 

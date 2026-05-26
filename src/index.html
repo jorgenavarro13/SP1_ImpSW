@@ -37,56 +37,56 @@
         </div>
     </header>
 
-    <main class="max-w-6xl mx-auto px-8 py-8 space-y-10">
+    <main class="max-w-6xl mx-auto px-8 py-8">
 
-        <!-- ── DFA Panel ──────────────────────────────────────────────────── -->
+        <!-- ── Unified Automaton Panel ──────────────────────────────────────── -->
         <section class="rounded-lg overflow-hidden" style="border:1px solid #3e3d32;">
 
             <!-- Panel header -->
             <div class="flex items-center gap-3 px-5 py-3" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
-                <span class="w-2.5 h-2.5 rounded-full" style="background:#a6e22e;"></span>
-                <span class="text-sm font-bold" style="color:#a6e22e;">DFA</span>
-                <span class="text-xs" style="color:#75715e;">Deterministic Finite Automaton</span>
-                <button id="run-btn-dfa" onclick="run('dfa')"
+                <span class="w-2.5 h-2.5 rounded-full" style="background:#e6db74;"></span>
+                <span class="text-sm font-bold" style="color:#e6db74;">AUTOMATON</span>
+                <span class="text-xs" style="color:#75715e;">Deterministic &amp; Non-deterministic Finite Automaton</span>
+                <button id="run-btn" onclick="run()"
                     class="ml-auto px-5 py-1.5 rounded text-sm font-bold transition-opacity"
-                    style="background:#a6e22e; color:#272822;">
+                    style="background:#e6db74; color:#272822;">
                     &#9654; Run
                 </button>
             </div>
 
             <!-- Input -->
             <div class="px-5 pt-4 pb-2" style="background:#1e1f1c;">
-                <textarea id="textbox-dfa" rows="8"
+                <textarea id="textbox" rows="8"
                     class="w-full rounded p-3 text-sm resize-y"
                     style="background:#272822; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace;"
-                    placeholder="Automata dfa [&#10;  states: [q0, q1, q2]&#10;  alphabet: [a, b]&#10;  start: q0&#10;  end: [q2]&#10;  transitions: [q0::a::q1, q1::b::q2]&#10;]">
+                    placeholder="Automaton dfa [&#10;  states: [q0, q1]&#10;  alphabet: [a, b]&#10;  start: q0&#10;  end: [q1]&#10;  transitions: [q0::a::q1, q1::b::q1]&#10;]&#10;&#10;-- or use: Automaton nfa [...]">
                 </textarea>
             </div>
 
             <!-- Loading -->
-            <div id="loading-dfa" class="hidden text-center text-sm py-3 px-5" style="background:#1e1f1c; color:#75715e;">
+            <div id="loading" class="hidden text-center text-sm py-3 px-5" style="background:#1e1f1c; color:#75715e;">
                 Processing...
             </div>
 
             <!-- Network / server error -->
-            <div id="error-box-dfa" class="hidden mx-5 mb-4 rounded p-3 text-sm"
+            <div id="error-box" class="hidden mx-5 mb-4 rounded p-3 text-sm"
                 style="background:#1a1b18; border:1px solid #f92672; color:#f92672;"></div>
 
             <!-- Parser / semantic errors -->
-            <div id="syntax-errors-dfa" class="hidden mx-5 mb-4 rounded overflow-hidden"
+            <div id="syntax-errors" class="hidden mx-5 mb-4 rounded overflow-hidden"
                 style="border:1px solid #f92672;">
                 <div class="flex items-center gap-2 px-4 py-2"
                     style="background:#1a1b18; border-bottom:1px solid #f92672;">
                     <span class="w-2 h-2 rounded-full" style="background:#f92672;"></span>
                     <span class="text-xs uppercase tracking-widest font-bold" style="color:#f92672;">Errors</span>
                 </div>
-                <ol id="syntax-error-list-dfa"
+                <ol id="syntax-error-list"
                     class="p-3 text-sm space-y-1 list-decimal list-inside"
                     style="background:#1e1f1c; color:#f92672; font-family:monospace;"></ol>
             </div>
 
             <!-- Results -->
-            <section id="results-dfa" class="hidden px-5 pb-5" style="background:#1e1f1c;">
+            <section id="results" class="hidden px-5 pb-5" style="background:#1e1f1c;">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
 
                     <!-- Token stream -->
@@ -95,7 +95,7 @@
                             <span class="w-2 h-2 rounded-full" style="background:#f92672;"></span>
                             <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Token Stream</span>
                         </div>
-                        <div id="token-output-dfa"
+                        <div id="token-output"
                             class="token-output p-3 text-sm leading-relaxed overflow-auto"
                             style="background:#272822; max-height:20rem;"></div>
                     </div>
@@ -103,11 +103,11 @@
                     <!-- Graph -->
                     <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
                         <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
-                            <span class="w-2 h-2 rounded-full" style="background:#a6e22e;"></span>
-                            <span class="text-xs uppercase tracking-widest" style="color:#75715e;">DFA Graph</span>
+                            <span class="w-2 h-2 rounded-full" style="background:#e6db74;"></span>
+                            <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Graph</span>
                         </div>
                         <div class="p-3 flex items-center justify-center" style="background:#272822; min-height:10rem;">
-                            <img id="graph-output-dfa" class="max-w-full rounded" alt="DFA graph" />
+                            <img id="graph-output" class="max-w-full rounded" alt="Automaton graph" />
                         </div>
                     </div>
 
@@ -121,121 +121,19 @@
                     </div>
                     <div class="p-3" style="background:#272822;">
                         <div class="flex gap-3 items-center">
-                            <input id="sim-input-dfa" type="text"
+                            <input id="sim-input" type="text"
                                 class="flex-1 rounded px-3 py-2 text-sm"
                                 style="background:#1e1f1c; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace; outline:none;"
                                 placeholder="Enter a string to simulate, e.g. ab" />
-                            <button id="sim-btn-dfa" onclick="simulate('dfa')"
+                            <button id="sim-btn" onclick="simulate()"
                                 class="px-4 py-2 rounded text-sm font-bold transition-opacity"
                                 style="background:#e6db74; color:#272822;">
                                 &#9654; Simulate
                             </button>
                         </div>
-                        <div id="sim-result-dfa" class="mt-2 text-sm hidden">
-                            <span id="sim-verdict-dfa" class="font-bold"></span>
-                            <span id="sim-path-dfa" class="ml-3" style="color:#75715e;"></span>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-        </section>
-
-        <!-- ── NFA Panel ──────────────────────────────────────────────────── -->
-        <section class="rounded-lg overflow-hidden" style="border:1px solid #3e3d32;">
-
-            <!-- Panel header -->
-            <div class="flex items-center gap-3 px-5 py-3" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
-                <span class="w-2.5 h-2.5 rounded-full" style="background:#66d9ef;"></span>
-                <span class="text-sm font-bold" style="color:#66d9ef;">NFA</span>
-                <span class="text-xs" style="color:#75715e;">Non-deterministic Finite Automaton</span>
-                <button id="run-btn-nfa" onclick="run('nfa')"
-                    class="ml-auto px-5 py-1.5 rounded text-sm font-bold transition-opacity"
-                    style="background:#66d9ef; color:#272822;">
-                    &#9654; Run
-                </button>
-            </div>
-
-            <!-- Input -->
-            <div class="px-5 pt-4 pb-2" style="background:#1e1f1c;">
-                <textarea id="textbox-nfa" rows="8"
-                    class="w-full rounded p-3 text-sm resize-y"
-                    style="background:#272822; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace;"
-                    placeholder="Automata nfa [&#10;  states: [q0, q1, q2]&#10;  alphabet: [a, b]&#10;  start: q0&#10;  end: [q2]&#10;  transitions: [q0::a::q1, q0::a::q2, q1::b::q2]&#10;]">
-                </textarea>
-            </div>
-
-            <!-- Loading -->
-            <div id="loading-nfa" class="hidden text-center text-sm py-3 px-5" style="background:#1e1f1c; color:#75715e;">
-                Processing...
-            </div>
-
-            <!-- Network / server error -->
-            <div id="error-box-nfa" class="hidden mx-5 mb-4 rounded p-3 text-sm"
-                style="background:#1a1b18; border:1px solid #f92672; color:#f92672;"></div>
-
-            <!-- Parser / semantic errors -->
-            <div id="syntax-errors-nfa" class="hidden mx-5 mb-4 rounded overflow-hidden"
-                style="border:1px solid #f92672;">
-                <div class="flex items-center gap-2 px-4 py-2"
-                    style="background:#1a1b18; border-bottom:1px solid #f92672;">
-                    <span class="w-2 h-2 rounded-full" style="background:#f92672;"></span>
-                    <span class="text-xs uppercase tracking-widest font-bold" style="color:#f92672;">Errors</span>
-                </div>
-                <ol id="syntax-error-list-nfa"
-                    class="p-3 text-sm space-y-1 list-decimal list-inside"
-                    style="background:#1e1f1c; color:#f92672; font-family:monospace;"></ol>
-            </div>
-
-            <!-- Results -->
-            <section id="results-nfa" class="hidden px-5 pb-5" style="background:#1e1f1c;">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-
-                    <!-- Token stream -->
-                    <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
-                        <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
-                            <span class="w-2 h-2 rounded-full" style="background:#f92672;"></span>
-                            <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Token Stream</span>
-                        </div>
-                        <div id="token-output-nfa"
-                            class="token-output p-3 text-sm leading-relaxed overflow-auto"
-                            style="background:#272822; max-height:20rem;"></div>
-                    </div>
-
-                    <!-- Graph -->
-                    <div class="rounded overflow-hidden" style="border:1px solid #3e3d32;">
-                        <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
-                            <span class="w-2 h-2 rounded-full" style="background:#66d9ef;"></span>
-                            <span class="text-xs uppercase tracking-widest" style="color:#75715e;">NFA Graph</span>
-                        </div>
-                        <div class="p-3 flex items-center justify-center" style="background:#272822; min-height:10rem;">
-                            <img id="graph-output-nfa" class="max-w-full rounded" alt="NFA graph" />
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- Simulator -->
-                <div class="mt-4 rounded overflow-hidden" style="border:1px solid #3e3d32;">
-                    <div class="flex items-center gap-2 px-4 py-2" style="background:#1a1b18; border-bottom:1px solid #3e3d32;">
-                        <span class="w-2 h-2 rounded-full" style="background:#fd971f;"></span>
-                        <span class="text-xs uppercase tracking-widest" style="color:#75715e;">Simulator</span>
-                    </div>
-                    <div class="p-3" style="background:#272822;">
-                        <div class="flex gap-3 items-center">
-                            <input id="sim-input-nfa" type="text"
-                                class="flex-1 rounded px-3 py-2 text-sm"
-                                style="background:#1e1f1c; border:1px solid #3e3d32; color:#f8f8f2; font-family:monospace; outline:none;"
-                                placeholder="Enter a string to simulate, e.g. ab" />
-                            <button id="sim-btn-nfa" onclick="simulate('nfa')"
-                                class="px-4 py-2 rounded text-sm font-bold transition-opacity"
-                                style="background:#fd971f; color:#272822;">
-                                &#9654; Simulate
-                            </button>
-                        </div>
-                        <div id="sim-result-nfa" class="mt-2 text-sm hidden">
-                            <span id="sim-verdict-nfa" class="font-bold"></span>
-                            <span id="sim-path-nfa" class="ml-3" style="color:#75715e;"></span>
+                        <div id="sim-result" class="mt-2 text-sm hidden">
+                            <span id="sim-verdict" class="font-bold"></span>
+                            <span id="sim-path" class="ml-3" style="color:#75715e;"></span>
                         </div>
                     </div>
                 </div>
