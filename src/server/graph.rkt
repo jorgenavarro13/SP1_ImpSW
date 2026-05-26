@@ -24,32 +24,32 @@
 
 ; Builds DOT source from the automaton hash.
 (define (generate-dot automaton)
-  (define states     (hash-ref automaton 'states))
-  (define start      (hash-ref automaton 'start))
-  (define end        (hash-ref automaton 'end))
+  (define states (hash-ref automaton 'states))
+  (define start (hash-ref automaton 'start))
+  (define end (hash-ref automaton 'end))
   (define trans-hash (hash-ref automaton 'transitions))
 
   ; Flatten nested hash (from -> (sym -> to)) into list of (from sym to) triples
   (define transitions
     (apply append
-      (hash-map trans-hash
-        (lambda (from sym-hash)
-          (hash-map sym-hash
-            (lambda (sym to) (list from sym to)))))))
+           (hash-map trans-hash
+                     (lambda (from sym-hash)
+                       (hash-map sym-hash
+                                 (lambda (sym to) (list from sym to)))))))
 
   (define state-lines
     (map (lambda (s)
            (if (member s end)
-             (format "  ~a [shape=doublecircle];" s)
-             (format "  ~a [shape=circle];" s)))
+               (format "  ~a [shape=doublecircle];" s)
+               (format "  ~a [shape=circle];" s)))
          states))
 
   (define transition-lines
     (hash-map (group-transitions transitions)
-      (lambda (key syms)
-        (format "  ~a -> ~a [label=\"~a\"];"
-                (car key) (cdr key)
-                (string-join syms ",")))))
+              (lambda (key syms)
+                (format "  ~a -> ~a [label=\"~a\"];"
+                        (car key) (cdr key)
+                        (string-join syms ",")))))
 
   (string-join
     (append
@@ -66,7 +66,7 @@
   (define dot-text (generate-dot automaton))
   (parameterize ([current-directory here])
     (call-with-output-file "dfa.dot" #:exists 'replace
-                           (lambda (out) (display dot-text out)))
+      (lambda (out) (display dot-text out)))
     (system "dot -Tpng dfa.dot -o dfa.png")
     (displayln "dfa.png generated")
     (bytes->string/latin-1 (base64-encode (file->bytes "dfa.png") #""))))
