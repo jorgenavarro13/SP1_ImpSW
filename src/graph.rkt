@@ -1,57 +1,72 @@
 #lang racket
-
-(provide genera-img)
 (require racket/system)
 (require racket/runtime-path)
+(require racket/string)
 (require net/base64)
+
+(provide generate-img)
 
 (define-runtime-path here ".")
 
-; Group transitions into a (from . to) -> (sym ...) map so parallel edges share one label
-(define (build-edge-map transitions)
-  (for*/fold ([acc (hash)])
-             ([(from from-map) (in-hash transitions)]
-              [(sym  to-list)  (in-hash from-map)]
-              [to              to-list])
-    (define key (cons from to))
-    (hash-set acc key (cons sym (hash-ref acc key '())))))
+; Groups transitions by (from . to) pair so multiple symbols share one edge.
+; Returns an immutable hash: (from . to) -> (list sym ...)
+(define (group-transitions transitions)
+  (foldl (lambda (t acc)
+           (define key (cons (first t) (third t)))
+           (define sym (second t))
+           (hash-update acc key
+                        (lambda (syms) (append syms (list sym)))
+                        '()))
+         (hash)
+         transitions))
 
-(define (genera-dot auto)
-  (define states      (hash-ref auto 'states      '()))
-  (define start       (hash-ref auto 'start       ""))
-  (define end-states  (hash-ref auto 'end         '()))
-  (define transitions (hash-ref auto 'transitions (hash)))
-  (define edge-map    (build-edge-map transitions))
+; Builds DOT source from the automaton hash.
+(define (generate-dot automaton)
+  (define states     (hash-ref automaton 'states))
+  (define start      (hash-ref automaton 'start))
+  (define end        (hash-ref automaton 'end))
+  (define trans-hash (hash-ref automaton 'transitions))
+
+  ; Flatten nested hash (from -> (sym -> (list to ...))) into (from sym to) triples
+  (define transitions
+    (apply append
+      (hash-map trans-hash
+        (lambda (from sym-hash)
+          (apply append
+            (hash-map sym-hash
+              (lambda (sym to-list)
+                (map (lambda (to) (list from sym to)) to-list))))))))
 
   (define state-lines
-    (apply string-append
-           (map (lambda (s)
-                  (if (member s end-states)
-                      (string-append "  " s " [shape=doublecircle];\n")
-                      (string-append "  " s " [shape=circle];\n")))
-                states)))
+    (map (lambda (s)
+           (if (member s end)
+             (format "  ~a [shape=doublecircle];" s)
+             (format "  ~a [shape=circle];" s)))
+         states))
 
-  (define edge-lines
-    (apply string-append
-           (for/list ([(key syms) (in-hash edge-map)])
-             (define from  (car key))
-             (define to    (cdr key))
-             (define label (string-join (remove-duplicates syms) ","))
-             (string-append "  " from " -> " to " [label=\"" label "\"];\n"))))
+  (define transition-lines
+    (hash-map (group-transitions transitions)
+      (lambda (key syms)
+        (format "  ~a -> ~a [label=\"~a\"];"
+                (car key) (cdr key)
+                (string-join syms ",")))))
 
-  (string-append
-   "digraph G {\n"
-   "  rankdir=LR;\n"
-   "  __start__ [shape=plaintext label=\"\"];\n"
-   "  __start__ -> " start ";\n"
-   state-lines
-   edge-lines
-   "}\n"))
+  (string-join
+    (append
+      (list "digraph DFA {"
+            "  rankdir=LR;"
+            "  start [shape=plaintext label=\"\"];"
+            (format "  start -> ~a;" start))
+      state-lines
+      transition-lines
+      (list "}"))
+    "\n"))
 
-(define (genera-img auto)
-  (define dot-text (genera-dot auto))
+(define (generate-img automaton)
+  (define dot-text (generate-dot automaton))
   (parameterize ([current-directory here])
-    (call-with-output-file "automaton.dot" #:exists 'replace
+    (call-with-output-file "dfa.dot" #:exists 'replace
                            (lambda (out) (display dot-text out)))
-    (system "dot -Tpng automaton.dot -o automaton.png")
-    (bytes->string/latin-1 (base64-encode (file->bytes "automaton.png") #""))))
+    (system "dot -Tpng dfa.dot -o dfa.png")
+    (displayln "dfa.png generated")
+    (bytes->string/latin-1 (base64-encode (file->bytes "dfa.png") #""))))
