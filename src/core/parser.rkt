@@ -5,7 +5,8 @@
          strip-spaces)
 
 ; Parser: converts a flat token list into an automaton data structure
-(define (strip-spaces raw-tokens)
+
+(define (strip-spaces raw-tokens) ; Helper function to remove blank spaces and newlines from the token stream
   (filter
     (lambda (t)
       (not (member (first t)
@@ -13,8 +14,8 @@
     raw-tokens)
   )
 
-(define (token-type tk) (first tk))
-(define (token-lexeme tk) (second tk))
+(define (token-type tk) (first tk)) ; Accessor for the token type (label)
+(define (token-lexeme tk) (second tk)) ; Accessor for the token lexeme (subStr)
 
 ; Parse result accessors: (list remaining-tokens auto errors)
 (define (make-result tokens auto errors) (list tokens auto errors))
@@ -22,6 +23,7 @@
 (define (result-auto r) (second r))
 (define (result-errors r) (third r))
 
+; Helper function to add an error to the error list
 (define (add-error errors expected received)
   (append errors
           (list
@@ -37,12 +39,12 @@
      (cond
        [(equal? next-token "stateId")
         (define lexem (token-lexeme (cadr tokens)))
-        (define new-states (append (hash-ref auto 'states '()) (list lexem)))
-        (define new-auto (hash-set auto 'states new-states))
-        (syntax-statesPrime (cddr tokens) new-auto errors)]
+        (define new-states (append (hash-ref auto 'states '()) (list lexem))) ; we
+        (define new-auto (hash-set auto 'states new-states)) ; Create a new auto with the updated states list
+        (syntax-statesPrime (cddr tokens) new-auto errors)] ; Recursive call to process the next stateId
        [else (make-result tokens auto (add-error errors "stateId" next-token))])]
     [(equal? current-token "left-straigth-parenthesis")
-     (make-result (cdr tokens) auto errors)]
+     (make-result (cdr tokens) auto errors)] ; Base case; if we find a closing bracket we return the list
     [else (make-result tokens auto (add-error errors ", or ]" current-token))]
     )
   )
@@ -54,7 +56,7 @@
     [(equal? current-token "stateId")
      (define lexem (token-lexeme (car tokens)))
      (define new-auto (hash-set auto 'states (list lexem)))
-     (syntax-statesPrime (cdr tokens) new-auto errors)]
+     (syntax-statesPrime (cdr tokens) new-auto errors)] ; Keep looking for  more statess
     [else (make-result tokens auto (add-error errors "stateId" current-token))]
     )
   )
@@ -64,7 +66,7 @@
   (define current-token (token-type (car tokens)))
   (cond
     [(equal? current-token "right-straigth-parenthesis")
-     (syntax-states (cdr tokens) auto errors)]
+     (syntax-states (cdr tokens) auto errors)] ; Look for states inside
     [else (make-result tokens auto (add-error errors "[" current-token))]
     )
   )
@@ -77,7 +79,7 @@
      (define next-token (token-type (cadr tokens)))
      (cond
        [(equal? next-token "dots")
-        (syntax-statesList (cddr tokens) auto errors)]
+        (syntax-statesList (cddr tokens) auto errors)] ; Check if the list of states is valid
        [else (make-result tokens auto (add-error errors ":" next-token))])]
     [else (make-result tokens auto (add-error errors "states" current-token))]
     )
@@ -87,14 +89,14 @@
 (define (syntax-alphabetPrime tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
-    [(equal? current-token "coma")
+    [(equal? current-token "coma") ; First compare if there's a comma at the beggining and continue
      (define next-token (token-type (cadr tokens)))
      (cond
        [(equal? next-token "alphabet-symbol")
         (define lexem (token-lexeme (cadr tokens)))
         (define new-alpha (append (hash-ref auto 'alphabet '()) (list lexem)))
-        (define new-auto (hash-set auto 'alphabet new-alpha))
-        (syntax-alphabetPrime (cddr tokens) new-auto errors)]
+        (define new-auto (hash-set auto 'alphabet new-alpha)) ; Replace the current hashmap with the new symbol of alphabet
+        (syntax-alphabetPrime (cddr tokens) new-auto errors)] ; Look for more alphabet symbols on the list
        [else (make-result tokens auto (add-error errors "alphabet-symbol" next-token))])]
     [(equal? current-token "left-straigth-parenthesis")
      (make-result (cdr tokens) auto errors)]
@@ -106,10 +108,10 @@
 (define (syntax-alphabet tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
-    [(equal? current-token "alphabet-symbol")
+    [(equal? current-token "alphabet-symbol") ; Does the alphabet actually starts with an alphabet symbol?
      (define lexem (token-lexeme (car tokens)))
      (define new-auto (hash-set auto 'alphabet (list lexem)))
-     (syntax-alphabetPrime (cdr tokens) new-auto errors)]
+     (syntax-alphabetPrime (cdr tokens) new-auto errors)] ; Recursive call to search more alphabet symbols
     [else (make-result tokens auto (add-error errors "alphabet-symbol" current-token))]
     )
   )
@@ -118,7 +120,7 @@
 (define (syntax-alphabetList tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
-    [(equal? current-token "right-straigth-parenthesis")
+    [(equal? current-token "right-straigth-parenthesis") ; Does the list starts with [ ?
      (syntax-alphabet (cdr tokens) auto errors)]
     [else (make-result tokens auto (add-error errors "[" current-token))]
     )
@@ -128,7 +130,7 @@
 (define (syntax-alphabetDefinition tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
-    [(equal? current-token "rw-alphabet")
+    [(equal? current-token "rw-alphabet") ; Does the alphabet section starts with alphabet : ?
      (define next-token (token-type (cadr tokens)))
      (cond
        [(equal? next-token "dots")
@@ -142,7 +144,7 @@
 (define (syntax-startDefinition tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
-    [(equal? current-token "rw-start")
+    [(equal? current-token "rw-start") ; Does the structure begins with start : ?
      (define next-token (token-type (cadr tokens)))
      (cond
        [(equal? next-token "dots")
@@ -162,14 +164,14 @@
 (define (syntax-endPrime tokens auto errors)
   (define current-token (token-type (car tokens)))
   (cond
-    [(equal? current-token "coma")
+    [(equal? current-token "coma") 
      (define next-token (token-type (cadr tokens)))
      (cond
        [(equal? next-token "stateId")
         (define lexem (token-lexeme (cadr tokens)))
         (define new-end (append (hash-ref auto 'end '()) (list lexem)))
         (define new-auto (hash-set auto 'end new-end))
-        (syntax-endPrime (cddr tokens) new-auto errors)]
+        (syntax-endPrime (cddr tokens) new-auto errors)] ; Look up for more end states
        [else (make-result tokens auto (add-error errors "stateId" next-token))])]
     [(equal? current-token "left-straigth-parenthesis")
      (make-result (cdr tokens) auto errors)]

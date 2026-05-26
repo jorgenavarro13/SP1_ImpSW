@@ -1,8 +1,0 @@
-Automaton automatin [ states: [q0,q1,q2,q3]  
-    alphabet: [abcd123456789]  
-    start: q0  
-    end: q3  
-    transitions: [
-        q0::0::q1, q0::1::q2, q1::1::q3, q2::0::q3
-    ]  
-] 

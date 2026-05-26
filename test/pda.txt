@@ -1,0 +1,37 @@
+  PDA anbn [
+    states: [q0, q1, q2]
+    alphabet: [a, b]
+    stackalpha: [A, Z]
+    stackbottom: Z
+    start: q0
+    end: [q2]
+    transitions: [q0::a,Z,AZ::q0, q0::a,A,AA::q0, q0::b,A,_::q1, q1::b,A,_::q1, q1::_,Z,Z::q2]
+  ]
+
+  Accepts: ab, aabb, aaabbb — Rejects: aab, abb
+
+  
+
+  PDA dyck [
+    states: [q0, q1]
+    alphabet: [a, b]
+    stackalpha: [A, Z]
+    stackbottom: Z
+    start: q0
+    end: [q1]
+    transitions: [q0::a,Z,AZ::q0, q0::a,A,AA::q0, q0::b,A,_::q0, q0::_,Z,Z::q1]
+  ]
+    Accepts: ab, abab, aabb — Rejects: ba, aab
+
+
+  PDA anb2n [
+    states: [q0, q1, q2]
+    alphabet: [a, b]
+    stackalpha: [B, Z]
+    stackbottom: Z
+    start: q0
+    end: [q2]
+    transitions: [q0::a,Z,BBZ::q0, q0::a,B,BBB::q0, q0::b,B,_::q1, q1::b,B,_::q1, q1::_,Z,Z::q2]
+  ]
+
+  Accepts: abb, aabbbb — Rejects: ab, abbb
