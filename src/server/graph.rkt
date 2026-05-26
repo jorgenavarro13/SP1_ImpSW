@@ -25,17 +25,28 @@
 ; Builds DOT source from the automaton hash.
 (define (generate-dot automaton)
   (define states (hash-ref automaton 'states))
-  (define start (hash-ref automaton 'start))
-  (define end (hash-ref automaton 'end))
-  (define trans-hash (hash-ref automaton 'transitions))
+  (define start  (hash-ref automaton 'start))
+  (define end    (hash-ref automaton 'end))
+  (define mode   (hash-ref automaton 'mode "dfa"))
 
-  ; Flatten nested hash (from -> (sym -> to)) into list of (from sym to) triples
+  ; Flatten transitions into (from label to) triples regardless of mode
   (define transitions
-    (apply append
-           (hash-map trans-hash
-                     (lambda (from sym-hash)
-                       (hash-map sym-hash
-                                 (lambda (sym to) (list from sym to)))))))
+    (if (equal? mode "pda")
+        (map (lambda (t)
+               (list (list-ref t 0)
+                     (format "~a,~a/~a" (list-ref t 1) (list-ref t 2) (list-ref t 4))
+                     (list-ref t 3)))
+             (hash-ref automaton 'pda-transitions '()))
+        (apply append
+               (hash-map (hash-ref automaton 'transitions (hash))
+                         (lambda (from sym-hash)
+                           (hash-map sym-hash
+                                     (lambda (sym to) (list from sym to))))))))
+
+  (define graph-title
+    (cond [(equal? mode "nfa") "NFA"]
+          [(equal? mode "pda") "PDA"]
+          [else "DFA"]))
 
   (define state-lines
     (map (lambda (s)
@@ -53,7 +64,7 @@
 
   (string-join
     (append
-      (list "digraph DFA {"
+      (list (format "digraph ~a {" graph-title)
             "  rankdir=LR;"
             "  start [shape=plaintext label=\"\"];"
             (format "  start -> ~a;" start))

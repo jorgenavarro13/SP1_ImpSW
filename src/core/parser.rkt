@@ -282,6 +282,175 @@
     )
   )
 
+; ── PDA-specific grammar ─────────────────────────────────────────────────────
+
+; stackAlphaPrime ::= , alphabet-symbol stackAlphaPrime | ]
+(define (syntax-stackAlphaPrime tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "coma")
+     (define next-token (token-type (cadr tokens)))
+     (cond
+       [(equal? next-token "alphabet-symbol")
+        (define lexem (token-lexeme (cadr tokens)))
+        (define new-sa (append (hash-ref auto 'stackalpha '()) (list lexem)))
+        (syntax-stackAlphaPrime (cddr tokens) (hash-set auto 'stackalpha new-sa) errors)]
+       [else (make-result tokens auto (add-error errors "stack symbol" next-token))])]
+    [(equal? current-token "left-straigth-parenthesis")
+     (make-result (cdr tokens) auto errors)]
+    [else (make-result tokens auto (add-error errors ", or ]" current-token))]))
+
+; stackAlpha ::= alphabet-symbol stackAlphaPrime
+(define (syntax-stackAlpha tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "alphabet-symbol")
+     (define lexem (token-lexeme (car tokens)))
+     (syntax-stackAlphaPrime (cdr tokens) (hash-set auto 'stackalpha (list lexem)) errors)]
+    [else (make-result tokens auto (add-error errors "stack symbol" current-token))]))
+
+; stackAlphaList ::= [ stackAlpha
+(define (syntax-stackAlphaList tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "right-straigth-parenthesis")
+     (syntax-stackAlpha (cdr tokens) auto errors)]
+    [else (make-result tokens auto (add-error errors "[" current-token))]))
+
+; stackAlphaDefinition ::= rw-stackalpha dots stackAlphaList
+(define (syntax-stackAlphaDefinition tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "rw-stackalpha")
+     (define next-token (token-type (cadr tokens)))
+     (cond
+       [(equal? next-token "dots")
+        (syntax-stackAlphaList (cddr tokens) auto errors)]
+       [else (make-result tokens auto (add-error errors ":" next-token))])]
+    [else (make-result tokens auto (add-error errors "stackalpha" current-token))]))
+
+; stackBottomDefinition ::= rw-stackbottom dots alphabet-symbol
+(define (syntax-stackBottomDefinition tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "rw-stackbottom")
+     (define next-token (token-type (cadr tokens)))
+     (cond
+       [(equal? next-token "dots")
+        (define sym-token (token-type (caddr tokens)))
+        (cond
+          [(equal? sym-token "alphabet-symbol")
+           (define lexem (token-lexeme (caddr tokens)))
+           (make-result (cdddr tokens) (hash-set auto 'stackbottom lexem) errors)]
+          [else (make-result tokens auto (add-error errors "stack symbol" sym-token))])]
+       [else (make-result tokens auto (add-error errors ":" next-token))])]
+    [else (make-result tokens auto (add-error errors "stackbottom" current-token))]))
+
+; pdaTransitionsPrime ::= , pdaTransition pdaTransitionsPrime | ]
+(define (syntax-pdaTransitionsPrime tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "coma")
+     (syntax-pdaTransition (cdr tokens) auto errors)]
+    [(equal? current-token "left-straigth-parenthesis")
+     (make-result (cdr tokens) auto errors)]
+    [else (make-result tokens auto (add-error errors ", or ]" current-token))]))
+
+; pdaTransition ::= stateId :: (alpha|_) , (alpha|_) , (alpha|id|_) :: stateId
+(define (syntax-pdaTransition tokens auto errors)
+  (cond
+    [(< (length tokens) 9)
+     (make-result tokens auto
+                  (add-error errors "stateId :: sym,stackTop,push :: stateId" "end of input"))]
+    [else
+     (define from-t  (list-ref tokens 0))
+     (define sym1-t  (list-ref tokens 1))
+     (define input-t (list-ref tokens 2))
+     (define com1-t  (list-ref tokens 3))
+     (define stop-t  (list-ref tokens 4))
+     (define com2-t  (list-ref tokens 5))
+     (define push-t  (list-ref tokens 6))
+     (define sym2-t  (list-ref tokens 7))
+     (define to-t    (list-ref tokens 8))
+     (cond
+       [(and (equal? (token-type from-t)  "stateId")
+             (equal? (token-type sym1-t)  "transition-sybol")
+             (member (token-type input-t) '("alphabet-symbol" "lower-line"))
+             (equal? (token-type com1-t)  "coma")
+             (member (token-type stop-t)  '("alphabet-symbol" "lower-line"))
+             (equal? (token-type com2-t)  "coma")
+             (member (token-type push-t)  '("alphabet-symbol" "identifier" "lower-line"))
+             (equal? (token-type sym2-t)  "transition-sybol")
+             (equal? (token-type to-t)    "stateId"))
+        (define from  (token-lexeme from-t))
+        (define input (token-lexeme input-t))
+        (define stop  (token-lexeme stop-t))
+        (define push  (token-lexeme push-t))
+        (define to    (token-lexeme to-t))
+        (define old-tr (hash-ref auto 'pda-transitions '()))
+        (define new-auto
+          (hash-set auto 'pda-transitions
+                    (append old-tr (list (list from input stop to push)))))
+        (syntax-pdaTransitionsPrime (list-tail tokens 9) new-auto errors)]
+       [else
+        (make-result tokens auto
+                     (add-error errors "stateId :: sym,stackTop,push :: stateId"
+                                (token-type from-t)))])]))
+
+; pdaTransitionsList ::= [ pdaTransition
+(define (syntax-pdaTransitionsList tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "right-straigth-parenthesis")
+     (syntax-pdaTransition (cdr tokens) auto errors)]
+    [else (make-result tokens auto (add-error errors "[" current-token))]))
+
+; pdaTransitionsDefinition ::= rw-transitions dots pdaTransitionsList
+(define (syntax-pdaTransitionsDefinition tokens auto errors)
+  (define current-token (token-type (car tokens)))
+  (cond
+    [(equal? current-token "rw-transitions")
+     (define next-token (token-type (cadr tokens)))
+     (cond
+       [(equal? next-token "dots")
+        (syntax-pdaTransitionsList (cddr tokens) auto errors)]
+       [else (make-result tokens auto (add-error errors ":" next-token))])]
+    [else (make-result tokens auto (add-error errors "transitions" current-token))]))
+
+; PDA body: states → alphabet → stackalpha → stackbottom → start → end → transitions
+(define (syntax-pda-automaton tokens auto errors)
+  (define id-type      (token-type (cadr tokens)))
+  (define bracket-type (token-type (caddr tokens)))
+  (cond
+    [(not (equal? id-type "identifier"))
+     (make-result tokens auto (add-error errors "identifier" id-type))]
+    [(not (equal? bracket-type "right-straigth-parenthesis"))
+     (make-result tokens auto (add-error errors "[" bracket-type))]
+    [else
+     (define auto+mode
+       (hash-set
+         (hash-set
+           (hash-set auto 'mode "pda")
+           'name (token-lexeme (cadr tokens)))
+         'pda-transitions '()))
+     (define states-r  (syntax-statesDefinition        (cdddr tokens)             auto+mode  errors))
+     (define alpha-r   (syntax-alphabetDefinition      (result-tokens states-r)   (result-auto states-r)   (result-errors states-r)))
+     (define salpha-r  (syntax-stackAlphaDefinition    (result-tokens alpha-r)    (result-auto alpha-r)    (result-errors alpha-r)))
+     (define sbottom-r (syntax-stackBottomDefinition   (result-tokens salpha-r)   (result-auto salpha-r)   (result-errors salpha-r)))
+     (define start-r   (syntax-startDefinition         (result-tokens sbottom-r)  (result-auto sbottom-r)  (result-errors sbottom-r)))
+     (define end-r     (syntax-endDefinition           (result-tokens start-r)    (result-auto start-r)    (result-errors start-r)))
+     (define trans-r   (syntax-pdaTransitionsDefinition (result-tokens end-r)     (result-auto end-r)      (result-errors end-r)))
+     (define rem        (result-tokens trans-r))
+     (define fin-auto   (result-auto   trans-r))
+     (define fin-errors (result-errors trans-r))
+     (cond
+       [(and (not (null? rem))
+             (equal? (token-type (car rem)) "left-straigth-parenthesis"))
+        (make-result (cdr rem) fin-auto fin-errors)]
+       [else
+        (define got (if (null? rem) "EOF" (token-type (car rem))))
+        (make-result rem fin-auto (add-error fin-errors "]" got))])]))
+
 ; automaton ::= (DFA | NFA) identifier [ statesDefinition alphabetDefinition startDefinition endDefinition transitionsDefinition ]
 (define (syntax-automaton tokens auto errors)
   (define kw-type (token-type (car tokens)))
@@ -312,22 +481,25 @@
               (make-result rem fin-auto (add-error fin-errors "]" got))])]
           [else (make-result tokens auto (add-error errors "[" bracket-type))])]
        [else (make-result tokens auto (add-error errors "identifier" id-type))])]
-    [else (make-result tokens auto (add-error errors "DFA or NFA" kw-type))]
+    [(equal? kw-type "rw-pda")
+     (syntax-pda-automaton tokens auto errors)]
+    [else (make-result tokens auto (add-error errors "DFA, NFA or PDA" kw-type))]
     )
   )
 
-; Semantic validation: every state/symbol referenced must be declared
-(define (validate-automaton auto)
-  (define states-set (list->set (hash-ref auto 'states '())))
-  (define alpha-set (list->set (hash-ref auto 'alphabet '())))
-  (define start (hash-ref auto 'start ""))
-  (define end-list (hash-ref auto 'end '()))
-  (define transitions (hash-ref auto 'transitions (hash)))
+; PDA semantic validation
+(define (validate-pda-semantics auto)
+  (define states-set  (list->set (hash-ref auto 'states '())))
+  (define alpha-set   (list->set (hash-ref auto 'alphabet '())))
+  (define salpha-set  (list->set (hash-ref auto 'stackalpha '())))
+  (define start       (hash-ref auto 'start ""))
+  (define end-list    (hash-ref auto 'end '()))
+  (define bottom      (hash-ref auto 'stackbottom ""))
+  (define pda-trans   (hash-ref auto 'pda-transitions '()))
 
   (define e1
     (if (and (not (equal? start "")) (not (set-member? states-set start)))
-        (list (string-append "Start state '" start "' is not declared"))
-        '()))
+        (list (string-append "Start state '" start "' is not declared")) '()))
 
   (define e2
     (foldl (lambda (s acc)
@@ -335,20 +507,78 @@
                  (append acc (list (string-append "End state '" s "' is not declared")))))
            e1 end-list))
 
-  (for/fold ([acc e2])
-            ([(from from-map) (in-hash transitions)])
-    (define acc1
-      (if (set-member? states-set from) acc
-          (append acc (list (string-append "Transition: origin '" from "' is not a declared state")))))
-    (for/fold ([acc2 acc1])
-              ([(sym to) (in-hash from-map)])
+  (define e3
+    (if (and (not (equal? bottom "")) (not (set-member? salpha-set bottom)))
+        (append e2 (list (string-append "Stack bottom '" bottom "' is not in stackalpha")))
+        e2))
+
+  (foldl
+    (lambda (t acc)
+      (define from  (list-ref t 0))
+      (define input (list-ref t 1))
+      (define stop  (list-ref t 2))
+      (define to    (list-ref t 3))
+      (define push  (list-ref t 4))
+      (define acc1
+        (if (set-member? states-set from) acc
+            (append acc (list (string-append "Transition: origin '" from "' is not a declared state")))))
+      (define acc2
+        (if (set-member? states-set to) acc1
+            (append acc1 (list (string-append "Transition: destination '" to "' is not a declared state")))))
       (define acc3
-        (if (set-member? alpha-set sym) acc2
-            (append acc2 (list (string-append "Transition: symbol '" sym "' is not in the alphabet")))))
-      (if (set-member? states-set to) acc3
-          (append acc3 (list (string-append "Transition: destination '" to "' is not a declared state")))))))
+        (if (or (equal? input "_") (set-member? alpha-set input)) acc2
+            (append acc2 (list (string-append "Transition: input '" input "' is not in alphabet")))))
+      (define acc4
+        (if (or (equal? stop "_") (set-member? salpha-set stop)) acc3
+            (append acc3 (list (string-append "Transition: stack symbol '" stop "' is not in stackalpha")))))
+      (if (equal? push "_")
+          acc4
+          (foldl (lambda (c inner-acc)
+                   (if (set-member? salpha-set (string c)) inner-acc
+                       (append inner-acc
+                               (list (string-append "Transition: push symbol '"
+                                                    (string c)
+                                                    "' is not in stackalpha")))))
+                 acc4
+                 (string->list push))))
+    e3
+    pda-trans))
+
+; Semantic validation: every state/symbol referenced must be declared
+(define (validate-automaton auto)
+  (define mode (hash-ref auto 'mode ""))
+  (if (equal? mode "pda")
+      (validate-pda-semantics auto)
+      (let ()
+        (define states-set (list->set (hash-ref auto 'states '())))
+        (define alpha-set (list->set (hash-ref auto 'alphabet '())))
+        (define start (hash-ref auto 'start ""))
+        (define end-list (hash-ref auto 'end '()))
+        (define transitions (hash-ref auto 'transitions (hash)))
+        (define e1
+          (if (and (not (equal? start "")) (not (set-member? states-set start)))
+              (list (string-append "Start state '" start "' is not declared"))
+              '()))
+        (define e2
+          (foldl (lambda (s acc)
+                   (if (set-member? states-set s) acc
+                       (append acc (list (string-append "End state '" s "' is not declared")))))
+                 e1 end-list))
+        (for/fold ([acc e2])
+                  ([(from from-map) (in-hash transitions)])
+          (define acc1
+            (if (set-member? states-set from) acc
+                (append acc (list (string-append "Transition: origin '" from "' is not a declared state")))))
+          (for/fold ([acc2 acc1])
+                    ([(sym to) (in-hash from-map)])
+            (define acc3
+              (if (set-member? alpha-set sym) acc2
+                  (append acc2 (list (string-append "Transition: symbol '" sym "' is not in the alphabet")))))
+            (if (set-member? states-set to) acc3
+                (append acc3 (list (string-append "Transition: destination '" to "' is not a declared state")))))))))
 
 ; Recursive descent entry point
+
 (define (Recursive-descent token-stream)
   (define result (syntax-automaton (strip-spaces token-stream) (hash) '()))
   (define syntax-errors (result-errors result))
