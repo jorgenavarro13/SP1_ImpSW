@@ -48,7 +48,8 @@
 
 ; Regular expresions of the automaton
 (define allRegex
-      '(  ("rw-automata" #rx"Automaton")
+      '(  ("rw-dfa" #rx"^DFA")
+          ("rw-nfa" #rx"^NFA")
           ("rw-start" #rx"^start")
           ("rw-end" #rx"^end")
           ("rw-states" #rx"^states")
